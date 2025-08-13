@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px transparent inset !important; /* Override the default blue background with a white background */
+}
+
+/* Remove autofill background for Firefox */
+input:-moz-autofill {
+  box-shadow: 0 0 0 1000px transparent inset !important; /* Override the default blue background with a white background */
+}
+
+@layer utilities {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  /* Hide scrollbar for IE, Edge and Firefox */
+
+  .no-scrollbar {
+    -ms-overflow-style: none !important; /* IE and Edge */
+    scrollbar-width: none !important; /* Firefox */
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+  background-color: #101828;
+}
+
+@keyframes wave {
+  0% {
+    transform: rotate(0deg);
+  }
+  10% {
+    transform: rotate(14deg);
+  }
+  20% {
+    transform: rotate(-8deg);
+  }
+  30% {
+    transform: rotate(14deg);
+  }
+  40% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(10deg);
+  }
+  60% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+.animate-wave {
+  display: inline-block;
+  transform-origin: 70% 70%;
+  animation: wave 2s infinite;
+}
+
+@layer components {
+  .input-base {
+    @apply w-full h-[44px] py-3 px-2 border border-gray-400
+    text-black rounded-lg text-xs focus:!border-gray-400
+     focus:!outline-none transition-all duration-150 ease-in-out;
+  }
+
+  .flex-center {
+    @apply flex justify-center items-center;
+  }
+
+  .form-btn {
+    @apply flex items-center justify-center w-full h-[44px] py-4 rounded-lg text-white mb-4;
+  }
+}

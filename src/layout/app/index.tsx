@@ -107,7 +107,7 @@ export default function AppLayout() {
               </TransitionChild>
               {/* Sidebar component, swap this element with another sidebar if you like */}
               <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-gray-800 px-6 pb-4">
-                <div className="flex h-16 shrink-0 items-center">
+                <div className="flex h-16 shrink-0 items-center bg-gray-200">
                   <img
                     alt="Your Company"
                     src="https://tailwindui.com/plus/img/logos/mark.svg?color=indigo&shade=600"
@@ -205,11 +205,11 @@ export default function AppLayout() {
         <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 lg:flex-col">
           {/* Sidebar component, swap this element with another sidebar if you like */}
           <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-gray-800 border-gray-700 border-r px-6 pb-4">
-            <div className="flex h-16 shrink-0 items-center">
+            <div className="flex h-16 shrink-0 items-center bg-gray-200 mt-4 rounded-md">
               <img
                 alt="Your Company"
                 src={logo}
-                className="h-16 w-auto object-contain"
+                className="h-28 w-auto object-contain"
               />
             </div>
             <nav className="flex flex-1 flex-col">

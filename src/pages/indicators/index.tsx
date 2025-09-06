@@ -789,7 +789,7 @@ const IndicatorPage: React.FC = () => {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="border-b border-gray-700 bg-gray-750">
-                <tr className="text-gray-400 text-sm">
+                <tr className="text-gray-400 text-sm text-nowrap">
                   <th 
                     className="text-left p-4 font-medium cursor-pointer hover:text-white transition-colors"
                     onClick={() => handleSort('name')}

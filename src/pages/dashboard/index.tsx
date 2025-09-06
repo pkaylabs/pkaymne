@@ -9,6 +9,7 @@ import {
   TrendingUp,
   TrendingDown,
   MoreHorizontal,
+  Activity,
 } from "lucide-react";
 
 // Types
@@ -173,10 +174,10 @@ const InteractiveBarChart: React.FC = () => {
   return (
     <div className="space-y-4 relative">
       <div className="flex justify-between text-gray-400 text-sm">
-        <span>400k</span>
-        <span>300k</span>
-        <span>200k</span>
-        <span>100k</span>
+        <span>400</span>
+        <span>300</span>
+        <span>200</span>
+        <span>100</span>
         <span>0</span>
       </div>
       <div className="flex items-end justify-between h-48 space-x-2">
@@ -223,7 +224,7 @@ const InteractiveBarChart: React.FC = () => {
         <div className="absolute top-0 left-1/2 transform -translate-x-1/2 bg-gray-700 text-white text-xs px-3 py-2 rounded shadow-lg z-10">
           <div className="font-medium">{hoveredBar.month}</div>
           <div>
-            {hoveredBar.type}: {hoveredBar.value}k
+            {hoveredBar.type}: {hoveredBar.value}
           </div>
         </div>
       )}
@@ -232,11 +233,11 @@ const InteractiveBarChart: React.FC = () => {
       <div className="flex items-center justify-center space-x-6 mt-4">
         <div className="flex items-center space-x-2">
           <div className="w-3 h-3 bg-blue-500 rounded"></div>
-          <span className="text-gray-400 text-xs">Primary Sales</span>
+          <span className="text-gray-400 text-xs">Planned</span>
         </div>
         <div className="flex items-center space-x-2">
           <div className="w-3 h-3 bg-gray-600 rounded"></div>
-          <span className="text-gray-400 text-xs">Secondary Sales</span>
+          <span className="text-gray-400 text-xs">Actual</span>
         </div>
       </div>
     </div>
@@ -486,7 +487,7 @@ const CustomerOrderTable: React.FC<{ orders: CustomerOrder[] }> = ({
   return (
     <div className="bg-gray-800 rounded-xl border border-gray-700 hover:border-gray-600 transition-all duration-300">
       <div className="flex items-center justify-between p-6 border-b border-gray-700">
-        <h3 className="text-white font-semibold text-lg">Customer order</h3>
+        <h3 className="text-white font-semibold text-lg">Recent Project Updates</h3>
         <button className="text-gray-400 hover:text-white transition-colors">
           <MoreHorizontal className="w-5 h-5" />
         </button>
@@ -612,14 +613,14 @@ const DashboardPage: React.FC = () => {
   ];
 
   const userTypeData: DonutData[] = [
-    { label: "New", value: 65, color: "#ffbc11" },
-    { label: "Returning", value: 25, color: "#FFE580" },
-    { label: "Inactive", value: 10, color: "#FFFBEF" },
+    { label: "On Track", value: 65, color: "#ffbc11" },
+    { label: "At Risk", value: 25, color: "#FFE580" },
+    { label: "Delayed", value: 10, color: "#FFFBEF" },
   ];
 
   const subscriptionData: DonutData[] = [
-    { label: "Paid", value: 70, color: "#3b82f6" },
-    { label: "Trial", value: 30, color: "#93c5fd" },
+    { label: "Complete", value: 70, color: "#3b82f6" },
+    { label: "Pending", value: 30, color: "#93c5fd" },
   ];
 
   return (
@@ -628,21 +629,21 @@ const DashboardPage: React.FC = () => {
         {/* Top Metrics Row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <MetricCard
-            title="Orders"
+            title="Active Projects"
             value="201"
             change="8.2%"
             changeType="positive"
-            icon={<ShoppingCart className="w-5 h-5" />}
+            icon={<Activity className="w-5 h-5" />}
           />
           <MetricCard
-            title="Approved"
+            title="Targets Achieved"
             value="36"
             change="3.4%"
             changeType="positive"
             icon={<CheckCircle className="w-5 h-5" />}
           />
           <MetricCard
-            title="Users"
+            title="Beneficiaries"
             value="4.890"
             change=""
             changeType="positive"
@@ -650,7 +651,7 @@ const DashboardPage: React.FC = () => {
             icon={<Users className="w-5 h-5" />}
           />
           <MetricCard
-            title="Subscriptions"
+            title="Data Collection"
             value="1.201"
             change=""
             changeType="positive"
@@ -662,15 +663,15 @@ const DashboardPage: React.FC = () => {
         {/* Second Metrics Row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <MetricCard
-            title="Month total"
-            value="25410"
+            title="Budget Utilized"
+            value="25,410"
             change="0.2%"
             changeType="negative"
             icon={<DollarSign className="w-5 h-5" />}
           />
           <MetricCard
-            title="Revenue"
-            value="1352"
+            title="Impact Score"
+            value="1,352"
             change="1.2%"
             changeType="negative"
             icon={<Wallet className="w-5 h-5" />}
@@ -679,7 +680,7 @@ const DashboardPage: React.FC = () => {
           {/* Interactive User Type Chart */}
           <div className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-gray-600 transition-all duration-300">
             <div className="flex items-center justify-between mb-4">
-              <span className="text-gray-400 text-sm font-medium">Users</span>
+              <span className="text-gray-400 text-sm font-medium">Project Status</span>
               <Users className="w-5 h-5 text-gray-500" />
             </div>
             <div className="flex items-center justify-between">
@@ -688,7 +689,7 @@ const DashboardPage: React.FC = () => {
                 {userTypeData.map((item, index) => (
                   <div
                     key={index}
-                    className="flex items-center space-x-2 hover:bg-gray-700 p-1 rounded transition-colors cursor-pointer"
+                    className="flex items-center space-x-2 text-nowrap hover:bg-gray-700 p-1 rounded transition-colors cursor-pointer"
                   >
                     <div
                       className="w-3 h-3 rounded-full transition-all hover:scale-110"
@@ -707,7 +708,7 @@ const DashboardPage: React.FC = () => {
           <div className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-gray-600 transition-all duration-300">
             <div className="flex items-center justify-between mb-4">
               <span className="text-gray-400 text-sm font-medium">
-                Subscriptions
+                Data Collection Status
               </span>
               <CreditCard className="w-5 h-5 text-gray-500" />
             </div>
@@ -717,7 +718,7 @@ const DashboardPage: React.FC = () => {
                 {subscriptionData.map((item, index) => (
                   <div
                     key={index}
-                    className="flex items-center space-x-2 hover:bg-gray-700 p-1 rounded transition-colors cursor-pointer"
+                    className="flex items-center space-x-2 text-nowrap hover:bg-gray-700 p-1 rounded transition-colors cursor-pointer"
                   >
                     <div
                       className="w-3 h-3 rounded-full transition-all hover:scale-110"
@@ -735,11 +736,11 @@ const DashboardPage: React.FC = () => {
 
         {/* Interactive Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <ChartCard title="Sales dynamics" year="2021">
+          <ChartCard title="Project Implementation Progress" year="2021">
             <InteractiveBarChart />
           </ChartCard>
 
-          <ChartCard title="Overall User Activity" year="2021">
+          <ChartCard title="Outcome Indicators Trend" year="2021">
             <div className="space-y-4">
               <div className="flex justify-between text-gray-400 text-sm">
                 <span>400k</span>
@@ -771,7 +772,7 @@ const DashboardPage: React.FC = () => {
                 Paid Invoices
               </h3>
               <div className="text-2xl font-bold text-white mb-1">
-                $30256.23
+                $ 30,256.23
               </div>
               <div className="text-gray-400 text-sm">
                 Current Financial Year
@@ -789,10 +790,10 @@ const DashboardPage: React.FC = () => {
                 </div>
               </div>
               <h3 className="text-gray-400 text-sm font-medium mb-2">
-                Paid Invoices
+                Sent Invoices
               </h3>
               <div className="text-2xl font-bold text-white mb-1">
-                $30256.23
+                $ 30,256.23
               </div>
               <div className="text-gray-400 text-sm">
                 Current Financial Year
@@ -813,10 +814,10 @@ const DashboardPage: React.FC = () => {
                 </div>
               </div>
               <h3 className="text-gray-400 text-sm font-medium mb-2">
-                Funds received
+                Project Funds
               </h3>
               <div className="text-2xl font-bold text-white mb-1">
-                $150256.23
+                $ 10,256.23
               </div>
               <div className="text-gray-400 text-sm">
                 Current Financial Year
@@ -838,7 +839,7 @@ const DashboardPage: React.FC = () => {
                 Funds received
               </h3>
               <div className="text-2xl font-bold text-white mb-1">
-                $150256.23
+                $ 150,256.23
               </div>
               <div className="text-gray-400 text-sm">
                 Current Financial Year

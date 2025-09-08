@@ -84,45 +84,45 @@ const sampleObjectives: Objective[] = [
     progress: 100,
     category: 'Research'
   },
-  {
-    id: 4,
-    name: 'System Integration',
-    description: 'Integrate new CRM system with existing customer database',
-    numIndicators: 12,
-    status: 'Pending',
-    priority: 'High',
-    assignedTo: 'David Kim',
-    createdAt: '2024-02-20',
-    dueDate: '2024-08-15',
-    progress: 20,
-    category: 'Information Technology'
-  },
-  {
-    id: 5,
-    name: 'Market Research Analysis',
-    description: 'Conduct comprehensive market analysis for Q2 strategy planning',
-    numIndicators: 6,
-    status: 'On Hold',
-    priority: 'Medium',
-    assignedTo: 'Emma Wilson',
-    createdAt: '2024-01-30',
-    dueDate: '2024-05-20',
-    progress: 30,
-    category: 'Finance'
-  },
-  {
-    id: 6,
-    name: 'Revenue Growth Initiative',
-    description: 'Implement strategies to achieve 25% revenue growth this quarter',
-    numIndicators: 10,
-    status: 'Active',
-    priority: 'High',
-    assignedTo: 'James Smith',
-    createdAt: '2024-01-05',
-    dueDate: '2024-03-31',
-    progress: 60,
-    category: 'Procurement'
-  }
+  // {
+  //   id: 4,
+  //   name: 'System Integration',
+  //   description: 'Integrate new CRM system with existing customer database',
+  //   numIndicators: 12,
+  //   status: 'Pending',
+  //   priority: 'High',
+  //   assignedTo: 'David Kim',
+  //   createdAt: '2024-02-20',
+  //   dueDate: '2024-08-15',
+  //   progress: 20,
+  //   category: 'Information Technology'
+  // },
+  // {
+  //   id: 5,
+  //   name: 'Market Research Analysis',
+  //   description: 'Conduct comprehensive market analysis for Q2 strategy planning',
+  //   numIndicators: 6,
+  //   status: 'On Hold',
+  //   priority: 'Medium',
+  //   assignedTo: 'Emma Wilson',
+  //   createdAt: '2024-01-30',
+  //   dueDate: '2024-05-20',
+  //   progress: 30,
+  //   category: 'Finance'
+  // },
+  // {
+  //   id: 6,
+  //   name: 'Revenue Growth Initiative',
+  //   description: 'Implement strategies to achieve 25% revenue growth this quarter',
+  //   numIndicators: 10,
+  //   status: 'Active',
+  //   priority: 'High',
+  //   assignedTo: 'James Smith',
+  //   createdAt: '2024-01-05',
+  //   dueDate: '2024-03-31',
+  //   progress: 60,
+  //   category: 'Procurement'
+  // }
 ];
 
 // Stats Card Component

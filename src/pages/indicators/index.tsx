@@ -284,13 +284,11 @@ const IndicatorForm: React.FC<{
     }
   };
 
-  const categories = ['Customer Service', 'Operations', 'Human Resources', 'Technology', 'Marketing', 'Sales', 'Finance'];
+  const categories = ['Human Resources', 'Policy and Planning', 'Research', 'Finance', 'Procurement'];
   const objectives = [
-    'Increase Customer Satisfaction',
-    'Reduce Response Time', 
-    'Employee Training Program',
-    'System Integration',
-    'Market Research Analysis',
+    'An industrialised and diversified economy', 
+    'Enhanced citizenry participation in the economy',
+    'Competitive private sector',
     'Revenue Growth Initiative'
   ];
 
@@ -437,14 +435,14 @@ const IndicatorForm: React.FC<{
 
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
-            Related Objective *
+            Related Outcome *
           </label>
           <select
             value={formData.objective}
             onChange={(e) => setFormData({ ...formData, objective: e.target.value })}
             className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
           >
-            <option value="">Select objective</option>
+            <option value="">Select Outcome</option>
             {objectives.map(obj => (
               <option key={obj} value={obj}>{obj}</option>
             ))}

@@ -47,8 +47,8 @@ interface ObjectiveFormData {
 const sampleObjectives: Objective[] = [
   {
     id: 1,
-    name: 'Increase Customer Satisfaction',
-    description: 'Improve overall customer satisfaction ratings through enhanced service delivery',
+    name: 'An industrialised and diversified economy',
+    description: 'Increase industrial satisfaction scores by 20% through improved service delivery',
     numIndicators: 5,
     status: 'Active',
     priority: 'High',
@@ -56,11 +56,11 @@ const sampleObjectives: Objective[] = [
     createdAt: '2024-01-15',
     dueDate: '2024-06-30',
     progress: 75,
-    category: 'Customer Service'
+    category: 'Human Resources'
   },
   {
     id: 2,
-    name: 'Reduce Response Time',
+    name: 'Enhanced citizenry participation in the economy',
     description: 'Decrease average customer support response time to under 2 hours',
     numIndicators: 3,
     status: 'Active',
@@ -69,11 +69,11 @@ const sampleObjectives: Objective[] = [
     createdAt: '2024-02-01',
     dueDate: '2024-04-15',
     progress: 45,
-    category: 'Operations'
+    category: 'Policy and Planning'
   },
   {
     id: 3,
-    name: 'Employee Training Program',
+    name: 'Competitive private sector',
     description: 'Complete comprehensive training for all customer service representatives',
     numIndicators: 8,
     status: 'Completed',
@@ -82,7 +82,7 @@ const sampleObjectives: Objective[] = [
     createdAt: '2023-12-10',
     dueDate: '2024-03-01',
     progress: 100,
-    category: 'Human Resources'
+    category: 'Research'
   },
   {
     id: 4,
@@ -95,7 +95,7 @@ const sampleObjectives: Objective[] = [
     createdAt: '2024-02-20',
     dueDate: '2024-08-15',
     progress: 20,
-    category: 'Technology'
+    category: 'Information Technology'
   },
   {
     id: 5,
@@ -108,7 +108,7 @@ const sampleObjectives: Objective[] = [
     createdAt: '2024-01-30',
     dueDate: '2024-05-20',
     progress: 30,
-    category: 'Marketing'
+    category: 'Finance'
   },
   {
     id: 6,
@@ -121,7 +121,7 @@ const sampleObjectives: Objective[] = [
     createdAt: '2024-01-05',
     dueDate: '2024-03-31',
     progress: 60,
-    category: 'Sales'
+    category: 'Procurement'
   }
 ];
 
@@ -209,7 +209,7 @@ const ObjectiveForm: React.FC<{
     if (formData.numIndicators < 1) newErrors.numIndicators = 'Must have at least 1 indicator';
     if (!formData.assignedTo.trim()) newErrors.assignedTo = 'Assigned person is required';
     if (!formData.dueDate) newErrors.dueDate = 'Due date is required';
-    if (!formData.category.trim()) newErrors.category = 'Category is required';
+    if (!formData.category.trim()) newErrors.category = 'Department is required';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -222,21 +222,21 @@ const ObjectiveForm: React.FC<{
     }
   };
 
-  const categories = ['Customer Service', 'Operations', 'Human Resources', 'Technology', 'Marketing', 'Sales', 'Finance'];
+  const categories = ['Human Resources', 'Policy and Planning', 'Research', 'Information Technology', 'Research', 'Procurement', 'Finance'];
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Name */}
       <div>
         <label className="block text-sm font-medium text-gray-300 mb-2">
-          Objective Name *
+          Outcome Name *
         </label>
         <input
           type="text"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
-          placeholder="Enter objective name"
+          placeholder="Enter outcome name"
         />
         {errors.name && <p className="text-red-400 text-sm mt-1">{errors.name}</p>}
       </div>
@@ -274,7 +274,7 @@ const ObjectiveForm: React.FC<{
 
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
-            Category *
+            Department *
           </label>
           <select
             value={formData.category}
@@ -502,28 +502,28 @@ const ObjectivesPage: React.FC = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Objectives</h1>
-            <p className="text-gray-400">Manage and track your organizational objectives</p>
+            <h1 className="text-3xl font-bold text-white mb-2">Development Outcomes</h1>
+            <p className="text-gray-400">Manage and track your organizational outcomes</p>
           </div>
           <button
             onClick={handleAddObjective}
             className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center space-x-2"
           >
             <Plus className="w-5 h-5" />
-            <span>Add Objective</span>
+            <span>Add Outcome</span>
           </button>
         </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatsCard
-            title="Total Objectives"
+            title="Total Outcomes"
             value={stats.total}
             icon={<Target className="w-6 h-6 text-blue-400" />}
             color="bg-blue-900"
           />
           <StatsCard
-            title="Active Objectives"
+            title="Active Outcomes"
             value={stats.active}
             change="+12%"
             changeType="positive"
@@ -557,7 +557,7 @@ const ObjectivesPage: React.FC = () => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="text"
-                  placeholder="Search objectives..."
+                  placeholder="Search outcomes..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full bg-gray-700 border border-gray-600 rounded-lg pl-10 pr-4 py-2 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
@@ -601,7 +601,7 @@ const ObjectivesPage: React.FC = () => {
                 onChange={(e) => setCategoryFilter(e.target.value)}
                 className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
               >
-                <option value="All">All Categories</option>
+                <option value="All">All Departments</option>
                 {uniqueCategories.map(category => (
                   <option key={category} value={category}>{category}</option>
                 ))}
@@ -611,7 +611,7 @@ const ObjectivesPage: React.FC = () => {
 
           {/* Results count */}
           <div className="mt-4 text-sm text-gray-400">
-            Showing {filteredObjectives.length} of {objectives.length} objectives
+            Showing {filteredObjectives.length} of {objectives.length} outcomes
           </div>
         </div>
 
@@ -625,7 +625,7 @@ const ObjectivesPage: React.FC = () => {
                     className="text-left p-4 font-medium cursor-pointer hover:text-white transition-colors"
                     onClick={() => handleSort('name')}
                   >
-                    Objective Name {sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    Outcome Name {sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     className="text-left p-4 font-medium cursor-pointer hover:text-white transition-colors"
@@ -764,7 +764,7 @@ const ObjectivesPage: React.FC = () => {
         <Modal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
-          title={editingObjective ? 'Edit Objective' : 'Add New Objective'}
+          title={editingObjective ? 'Edit Outcome' : 'Add New Outcome'}
         >
           <ObjectiveForm
             objective={editingObjective}

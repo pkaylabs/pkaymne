@@ -628,14 +628,14 @@ const DashboardPage: React.FC = () => {
         {/* Top Metrics Row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <MetricCard
-            title="Orders"
+            title="Indicators"
             value="201"
             change="8.2%"
             changeType="positive"
             icon={<ShoppingCart className="w-5 h-5" />}
           />
           <MetricCard
-            title="Approved"
+            title="Development Outcomes"
             value="36"
             change="3.4%"
             changeType="positive"
@@ -643,7 +643,7 @@ const DashboardPage: React.FC = () => {
           />
           <MetricCard
             title="Users"
-            value="4.890"
+            value="4890"
             change=""
             changeType="positive"
             subtitle="since last month"
@@ -651,10 +651,10 @@ const DashboardPage: React.FC = () => {
           />
           <MetricCard
             title="Subscriptions"
-            value="1.201"
+            value="11"
             change=""
             changeType="positive"
-            subtitle="since last month"
+            subtitle="since last year"
             icon={<CreditCard className="w-5 h-5" />}
           />
         </div>

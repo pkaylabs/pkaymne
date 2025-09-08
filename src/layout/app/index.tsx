@@ -332,7 +332,7 @@ export default function AppLayout() {
                         aria-hidden="true"
                         className="ml-4 text-sm leading-none text-left font-semibold text-gray-200"
                       >
-                        Tom Cook <br />{" "}
+                        Mr. Otoo <br />{" "}
                         <span className="font-normal text-xs text-gray-200">
                           Admin
                         </span>

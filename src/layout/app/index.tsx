@@ -40,7 +40,8 @@ import classNames from "@/utils/classnames";
 
 const navigation = [
   { name: "Dashboard", href: DASHBOARD, icon: MdOutlineDashboard },
-  { name: "Objectives", href: OBJECTIVES, icon: UsersIcon },
+  { name: "Outcomes", href: OBJECTIVES, icon: UsersIcon },
+  // { name: "Objectives", href: OBJECTIVES, icon: UsersIcon },
   { name: "Indicators", href: INDICATORS, icon: FolderIcon },
   { name: "Reports", href: REPORTS, icon: LuStethoscope },
 ];

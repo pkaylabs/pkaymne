@@ -63,23 +63,23 @@ interface IndicatorData {
 const sampleObjectives: ObjectiveData[] = [
   {
     id: 1,
-    name: 'Increase Customer Satisfaction',
-    category: 'Customer Service',
+    name: 'An industrialised and diversified economy',
+    category: 'Human Resources',
     status: 'Active',
     progress: 75,
     indicators: []
   },
   {
     id: 2,
-    name: 'Reduce Response Time',
-    category: 'Operations',
+    name: 'Enhanced citizenry participation in the economy',
+    category: 'Policy and Planning',
     status: 'Active',
     progress: 85,
     indicators: []
   },
   {
     id: 3,
-    name: 'Employee Training Program',
+    name: 'Competitive private sector',
     category: 'Human Resources',
     status: 'Completed',
     progress: 100,
@@ -98,7 +98,7 @@ const sampleObjectives: ObjectiveData[] = [
 const sampleIndicators: IndicatorData[] = [
   {
     id: 1,
-    name: 'Customer Satisfaction Score',
+    name: 'Share of manufacturing value-added in GDP',
     baseline: 3.2,
     target: 4.5,
     actual: 4.1,
@@ -106,7 +106,7 @@ const sampleIndicators: IndicatorData[] = [
     status: 'On Track',
     objective: 'Increase Customer Satisfaction',
     assignee: 'Sarah Johnson',
-    category: 'Customer Service',
+    category: 'Human Resources',
     trend: 'up',
     history: [
       { date: '2024-01-01', value: 3.2 },
@@ -117,7 +117,7 @@ const sampleIndicators: IndicatorData[] = [
   },
   {
     id: 2,
-    name: 'Average Response Time',
+    name: 'Share of Service value-added in GDP',
     baseline: 4.5,
     target: 2.0,
     actual: 2.3,
@@ -125,7 +125,7 @@ const sampleIndicators: IndicatorData[] = [
     status: 'On Track',
     objective: 'Reduce Response Time',
     assignee: 'Mike Chen',
-    category: 'Operations',
+    category: 'Policy and Planning',
     trend: 'down',
     history: [
       { date: '2024-01-01', value: 4.5 },
@@ -136,7 +136,7 @@ const sampleIndicators: IndicatorData[] = [
   },
   {
     id: 3,
-    name: 'Training Completion Rate',
+    name: 'Growth rate in export share of manufactures and services',
     baseline: 65,
     target: 95,
     actual: 88,
@@ -155,7 +155,7 @@ const sampleIndicators: IndicatorData[] = [
   },
   {
     id: 4,
-    name: 'Revenue Per Customer',
+    name: 'Rank of top 5 commodity exports',
     baseline: 1250,
     target: 1600,
     actual: 1520,
@@ -163,7 +163,7 @@ const sampleIndicators: IndicatorData[] = [
     status: 'On Track',
     objective: 'Revenue Growth Initiative',
     assignee: 'James Smith',
-    category: 'Sales',
+    category: 'Procurement',
     trend: 'up',
     history: [
       { date: '2024-01-01', value: 1250 },
@@ -174,7 +174,7 @@ const sampleIndicators: IndicatorData[] = [
   },
   {
     id: 5,
-    name: 'Employee Satisfaction',
+    name: 'Non-extractive export earnings',
     baseline: 3.8,
     target: 4.3,
     actual: 4.5,
@@ -311,7 +311,7 @@ const ReportFilters: React.FC<{
         <div className="space-y-4">
           <h3 className="text-lg font-medium text-white flex items-center space-x-2">
             <Target className="w-5 h-5" />
-            <span>Objectives</span>
+            <span>Development Outcomes</span>
           </h3>
           <div className="space-y-2 max-h-48 overflow-y-auto">
             {sampleObjectives.map(objective => (
@@ -359,7 +359,7 @@ const ReportFilters: React.FC<{
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
         {/* Categories */}
         <div className="space-y-4">
-          <h3 className="text-lg font-medium text-white">Categories</h3>
+          <h3 className="text-lg font-medium text-white">Departments</h3>
           <div className="space-y-2">
             {uniqueCategories.map(category => (
               <label key={category} className="flex items-center space-x-3 hover:bg-gray-700 p-2 rounded-lg transition-colors cursor-pointer">

@@ -55,14 +55,14 @@ interface IndicatorFormData {
 const sampleIndicators: Indicator[] = [
   {
     id: 1,
-    name: 'Customer Satisfaction Score',
-    description: 'Overall customer satisfaction rating based on surveys',
+    name: 'Share of Manufacturing value-added in GDP',
+    description: 'Percentage of GDP contributed by the manufacturing sector',
     baseline: 3.2,
     target: 4.5,
     actual: 4.1,
     unit: 'Score (1-5)',
     assignee: 'Sarah Johnson',
-    category: 'Customer Service',
+    category: 'Human Resources',
     objective: 'Increase Customer Satisfaction',
     createdAt: '2024-01-15',
     updatedAt: '2024-03-10',
@@ -71,14 +71,14 @@ const sampleIndicators: Indicator[] = [
   },
   {
     id: 2,
-    name: 'Average Response Time',
-    description: 'Average time to respond to customer support tickets',
+    name: 'Share of Service value-added in GDP',
+    description: 'Percentage of GDP contributed by the service sector',
     baseline: 4.5,
     target: 2.0,
     actual: 2.3,
     unit: 'Hours',
     assignee: 'Mike Chen',
-    category: 'Operations',
+    category: 'Policy and Planning',
     objective: 'Reduce Response Time',
     createdAt: '2024-02-01',
     updatedAt: '2024-03-12',
@@ -87,14 +87,14 @@ const sampleIndicators: Indicator[] = [
   },
   {
     id: 3,
-    name: 'Training Completion Rate',
-    description: 'Percentage of employees who completed mandatory training',
+    name: 'Growth rate in export share of manufactures and services',
+    description: 'Percentage increase in export share of manufactures and services',
     baseline: 65,
     target: 95,
     actual: 88,
     unit: 'Percentage',
     assignee: 'Lisa Rodriguez',
-    category: 'Human Resources',
+    category: 'Information Technology',
     objective: 'Employee Training Program',
     createdAt: '2023-12-10',
     updatedAt: '2024-03-08',
@@ -103,14 +103,14 @@ const sampleIndicators: Indicator[] = [
   },
   {
     id: 4,
-    name: 'System Uptime',
-    description: 'Percentage of time systems are operational and available',
+    name: 'Rank of top 5 commodity exports',
+    description: 'Ranking of the top 5 commodities exported',
     baseline: 97.5,
     target: 99.9,
     actual: 98.2,
     unit: 'Percentage',
     assignee: 'David Kim',
-    category: 'Technology',
+    category: 'Research',
     objective: 'System Integration',
     createdAt: '2024-02-20',
     updatedAt: '2024-03-13',
@@ -119,14 +119,14 @@ const sampleIndicators: Indicator[] = [
   },
   {
     id: 5,
-    name: 'Market Share Growth',
-    description: 'Percentage increase in market share compared to previous period',
+    name: 'Non-extractive export earnings',
+    description: 'Percentage increase in non-extractive export earnings compared to previous period',
     baseline: 12.5,
     target: 18.0,
     actual: 11.8,
     unit: 'Percentage',
     assignee: 'Emma Wilson',
-    category: 'Marketing',
+    category: 'Finance',
     objective: 'Market Research Analysis',
     createdAt: '2024-01-30',
     updatedAt: '2024-03-05',
@@ -135,14 +135,14 @@ const sampleIndicators: Indicator[] = [
   },
   {
     id: 6,
-    name: 'Revenue Per Customer',
-    description: 'Average revenue generated per customer',
-    baseline: 1250,
-    target: 1600,
-    actual: 1520,
-    unit: 'USD',
+    name: 'Youth employment rate',
+    description: 'Percentage of youth (ages 15-24) who are employed',
+    baseline: 40,
+    target: 50,
+    actual: 45,
+    unit: 'Percentage',
     assignee: 'James Smith',
-    category: 'Sales',
+    category: 'Procurement',
     objective: 'Revenue Growth Initiative',
     createdAt: '2024-01-05',
     updatedAt: '2024-03-11',
@@ -151,12 +151,12 @@ const sampleIndicators: Indicator[] = [
   },
   {
     id: 7,
-    name: 'Employee Satisfaction',
-    description: 'Employee satisfaction survey results',
+    name: 'Services productivity growth rate',
+    description: 'Percentage increase in productivity of the services sector',
     baseline: 3.8,
     target: 4.3,
     actual: 4.5,
-    unit: 'Score (1-5)',
+    unit: 'Percentage',
     assignee: 'Lisa Rodriguez',
     category: 'Human Resources',
     objective: 'Employee Training Program',
@@ -167,14 +167,14 @@ const sampleIndicators: Indicator[] = [
   },
   {
     id: 8,
-    name: 'Conversion Rate',
-    description: 'Percentage of leads that convert to customers',
+    name: 'Manufacturing productivity growth rate',
+    description: 'Percentage increase in productivity of the manufacturing sector',
     baseline: 2.8,
     target: 4.5,
     actual: 3.2,
     unit: 'Percentage',
     assignee: 'James Smith',
-    category: 'Sales',
+    category: 'Procurement',
     objective: 'Revenue Growth Initiative',
     createdAt: '2024-02-10',
     updatedAt: '2024-03-12',
@@ -698,7 +698,7 @@ const IndicatorPage: React.FC = () => {
             color="bg-yellow-900"
           />
           <StatsCard
-            title="Achieved"
+            title="Completed"
             value={stats.achieved}
             change="+3"
             changeType="positive"
@@ -754,7 +754,7 @@ const IndicatorPage: React.FC = () => {
                 onChange={(e) => setCategoryFilter(e.target.value)}
                 className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
               >
-                <option value="All">All Categories</option>
+                <option value="All">All Departments</option>
                 {uniqueCategories.map(category => (
                   <option key={category} value={category}>{category}</option>
                 ))}

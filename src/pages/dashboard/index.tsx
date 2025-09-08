@@ -630,7 +630,7 @@ const DashboardPage: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <MetricCard
             title="Active Projects"
-            value="201"
+          value="201"
             change="8.2%"
             changeType="positive"
             icon={<Activity className="w-5 h-5" />}
@@ -645,7 +645,7 @@ const DashboardPage: React.FC = () => {
           <MetricCard
             title="Beneficiaries"
             value="4.890"
-            change=""
+         change=""
             changeType="positive"
             subtitle="since last month"
             icon={<Users className="w-5 h-5" />}
@@ -653,9 +653,9 @@ const DashboardPage: React.FC = () => {
           <MetricCard
             title="Data Collection"
             value="1.201"
-            change=""
+          change=""
             changeType="positive"
-            subtitle="since last month"
+            subtitle="since last year"
             icon={<CreditCard className="w-5 h-5" />}
           />
         </div>

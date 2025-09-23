@@ -1,11 +1,18 @@
 import { Outlet, type Route, type SearchPredicate } from "react-location";
 import type { LocationGenerics } from "./location";
-import DashboardPage from "@/pages/dashboard";
-import { INDICATORS, OBJECTIVES, REPORTS, SETTINGS } from "@/constants/page-path";
-import ObjectivesPage from "@/pages/objectives";
-import IndicatorPage from "@/pages/indicators";
-import ReportsPage from "@/pages/reports";
-import SettingsPage from "@/pages/settings";
+import { lazy } from "react";
+const DashboardPage = lazy(() => import("@/pages/dashboard"));
+import {
+  INDICATORS,
+  OBJECTIVES,
+  REPORTS,
+  SETTINGS,
+} from "@/constants/page-path";
+const ReportsPage = lazy(() => import("@/pages/reports"));
+const ObjectivesPage = lazy(() => import("@/pages/objectives"));
+const IndicatorPage = lazy(() => import("@/pages/indicators"));
+const SettingsPage = lazy(() => import("@/pages/settings"));
+const LandingPage = lazy(() => import("@/pages/landingPage"));
 
 export type RouteProps = Omit<Route, "children"> & {
   navigation?: boolean;
@@ -15,6 +22,13 @@ export type RouteProps = Omit<Route, "children"> & {
 };
 
 const routes: RouteProps[] = [
+  {
+    path: "landing-page",
+    element: <LandingPage />,
+    meta: {
+      layout: "Landing",
+    },
+  },
   {
     path: "/",
     element: <DashboardPage />,
@@ -36,7 +50,6 @@ const routes: RouteProps[] = [
           layout: "App",
         },
       },
-      
     ],
   },
   {
@@ -53,7 +66,6 @@ const routes: RouteProps[] = [
           layout: "App",
         },
       },
-      
     ],
   },
   {
@@ -70,7 +82,6 @@ const routes: RouteProps[] = [
           layout: "App",
         },
       },
-      
     ],
   },
   {
@@ -87,10 +98,8 @@ const routes: RouteProps[] = [
           layout: "App",
         },
       },
-      
     ],
   },
-  
 ];
 
 export default routes;

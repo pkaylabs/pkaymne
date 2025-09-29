@@ -37,7 +37,11 @@ export default function LandingPage() {
       priceMonthly: 0,
       priceYearly: 0,
       desc: "Basic tracking for small teams",
-      features: ["Up to 3 projects", "Indicators & dashboards", "CSV export"],
+      features: [
+        "Up to 3 projects",
+        "Indicators & dashboards",
+        "Basic reports",
+      ],
       cta: "Start free",
       popular: false,
     },
@@ -45,7 +49,7 @@ export default function LandingPage() {
       id: "pro",
       name: "Pro",
       priceMonthly: 49,
-      priceYearly: 480, // 2 months free
+      priceYearly: 480,
       desc: "Everything teams need to scale",
       features: [
         "Unlimited projects",
@@ -61,13 +65,8 @@ export default function LandingPage() {
       name: "Enterprise",
       priceMonthly: 199,
       priceYearly: 1990,
-      desc: "Custom solutions for orgs",
-      features: [
-        "Custom SLAs",
-        "SAML SSO",
-        "Dedicated onboarding",
-        "Custom integrations",
-      ],
+      desc: "Custom solutions for organizations",
+      features: ["Dedicated onboarding", "Custom integrations", "Automated reports"],
       cta: "Contact sales",
       popular: false,
     },
@@ -249,7 +248,7 @@ export default function LandingPage() {
             </motion.div>
           </div>
 
-          {/* Right: animated mock UI with parallax */}
+         
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={heroReveal.inView ? { opacity: 1, y: 0 } : {}}
@@ -572,40 +571,40 @@ export default function LandingPage() {
                         {f === "Projects"
                           ? "Up to 3"
                           : f === "Automated reports"
-                          ? "Basic"
-                          : f === "Offline sync"
-                          ? "—"
-                          : f === "SAML SSO"
-                          ? "—"
-                          : f === "Dedicated support"
-                          ? "Community"
-                          : ""}
+                            ? "Basic"
+                            : f === "Offline sync"
+                              ? "—"
+                              : f === "SAML SSO"
+                                ? "—"
+                                : f === "Dedicated support"
+                                  ? "Community"
+                                  : ""}
                       </td>
                       <td className="p-3">
                         {f === "Projects"
                           ? "Unlimited"
                           : f === "Automated reports"
-                          ? "Advanced"
-                          : f === "Offline sync"
-                          ? "Included"
-                          : f === "SAML SSO"
-                          ? "—"
-                          : f === "Dedicated support"
-                          ? "Priority"
-                          : ""}
+                            ? "Advanced"
+                            : f === "Offline sync"
+                              ? "Included"
+                              : f === "SAML SSO"
+                                ? "—"
+                                : f === "Dedicated support"
+                                  ? "Priority"
+                                  : ""}
                       </td>
                       <td className="p-3">
                         {f === "Projects"
                           ? "Unlimited"
                           : f === "Automated reports"
-                          ? "Advanced"
-                          : f === "Offline sync"
-                          ? "Included"
-                          : f === "SAML SSO"
-                          ? "Included"
-                          : f === "Dedicated support"
-                          ? "Dedicated CSM"
-                          : ""}
+                            ? "Advanced"
+                            : f === "Offline sync"
+                              ? "Included"
+                              : f === "SAML SSO"
+                                ? "Included"
+                                : f === "Dedicated support"
+                                  ? "Dedicated CSM"
+                                  : ""}
                       </td>
                     </tr>
                   ))}

@@ -1,9 +1,9 @@
 {
   "compilerOptions": {
     "paths": {
-      "@/*": ["./src/*"]
+          "@/*": ["*"]
     },
-    "target": "es5",
+        "target": "ESNext",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
@@ -17,7 +17,9 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+  "jsx": "react-jsx",
+  "types": ["node"],
+        "baseUrl": "src",
   },
   "include": ["./src"],
   "references": [{ "path": "./tsconfig.node.json" }]

@@ -1,3 +1,11 @@
+import {
+  legals,
+  navigation,
+  socials,
+  system,
+  userNavigation,
+} from "@/constants";
+import { Link, Outlet, createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   Dialog,
@@ -13,68 +21,23 @@ import {
   Bars3Icon,
   BellIcon,
   Cog6ToothIcon,
-  FolderIcon,
-  UsersIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
-import { ChevronDownIcon } from "@heroicons/react/20/solid";
-import { Link, Outlet, useLocation, useRouter } from "react-location";
-import logo from "@/assets/images/logo.png";
-import { CiFacebook } from "react-icons/ci";
-import { FaXTwitter } from "react-icons/fa6";
-import { FaInstagram } from "react-icons/fa6";
-import { AiOutlineYoutube } from "react-icons/ai";
-import { CiLinkedin } from "react-icons/ci";
-import { MdOutlineDashboard } from "react-icons/md";
-import { LuStethoscope } from "react-icons/lu";
-import sideImge from "@/assets/images/side.png";
-
-import {
-  DASHBOARD,
-  REPORTS,
-  INDICATORS,
-  OBJECTIVES,
-  SETTINGS,
-} from "@/constants/page-path";
 import classNames from "@/utils/classnames";
+import logo from "@/assets/images/logo.png";
+import sideImge from "@/assets/images/side.png";
+import { SETTINGS } from "@/constants/page-path";
+import { ChevronDownIcon } from "@heroicons/react/20/solid";
 
-const navigation = [
-  { name: "Dashboard", href: DASHBOARD, icon: MdOutlineDashboard },
-  { name: "Objectives", href: OBJECTIVES, icon: UsersIcon },
-  { name: "Indicators", href: INDICATORS, icon: FolderIcon },
-  { name: "Reports", href: REPORTS, icon: LuStethoscope },
-];
+export const Route = createFileRoute("/_app")({
+  component: AppLayout,
+});
 
-const teams = [
-  {
-    id: 1,
-    name: "Settings",
-    href: SETTINGS,
-    initial: "S",
-    current: false,
-  },
-];
-
-const socials = [
-  { id: 1, icon: CiFacebook, href: "#" },
-  { id: 2, icon: FaXTwitter, href: "#" },
-  { id: 3, icon: FaInstagram, href: "#" },
-  { id: 4, icon: AiOutlineYoutube, href: "#" },
-  { id: 5, icon: CiLinkedin, href: "#" },
-];
-const userNavigation = [
-  { name: "Your profile", href: "#" },
-  { name: "Sign out", href: "#" },
-];
-
-export default function AppLayout() {
+function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  const currentPath = useLocation().current.pathname;
-
   return (
     <>
-      <div>
+      <div >
         <Dialog
           open={sidebarOpen}
           onClose={setSidebarOpen}
@@ -105,7 +68,7 @@ export default function AppLayout() {
                   </button>
                 </div>
               </TransitionChild>
-              {/* Sidebar component, swap this element with another sidebar if you like */}
+              {/* Sidebar component */}
               <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-gray-800 px-6 pb-4">
                 <div className="flex h-16 shrink-0 items-center bg-gray-200">
                   <img
@@ -120,31 +83,30 @@ export default function AppLayout() {
                       <ul role="list" className="-mx-2 space-y-1">
                         {navigation.map((item, index) => (
                           <li key={index}>
-                            <Link
-                              to={item.href}
-                              className={classNames(
-                                currentPath === item.href ||
-                                  currentPath.includes(
-                                    item.name.split(" ")[0].toLowerCase()
-                                  )
-                                  ? "bg-primary-50 text-primary font-semibold"
-                                  : "text-gray-800 hover:bg-gray-50 hover:text-primary-600 font-medium",
-                                "group flex gap-x-3 rounded-xl px-5 py-3 text-sm  leading-6 capitalize"
-                              )}
-                            >
-                              <item.icon
-                                aria-hidden="true"
-                                className={classNames(
-                                  currentPath === item.href ||
-                                    currentPath.includes(
-                                      item.name.split(" ")[0].toLowerCase()
-                                    )
-                                    ? "text-primary"
-                                    : "text-black group-hover:text-primary",
-                                  "h-5 w-5 shrink-0"
-                                )}
-                              />
-                              {item.name}
+                            <Link to={item.href}>
+                              {({ isActive }) => {
+                                return (
+                                  <div
+                                    className={classNames(
+                                      isActive
+                                        ? "g-primary-50 text-primary font-semibold"
+                                        : "text-gray-800 hover:bg-gray-50 hover:text-primary-600 font-medium",
+                                      "group flex gap-x-3 rounded-xl px-5 py-3 text-sm  leading-6 capitalize"
+                                    )}
+                                  >
+                                    <item.icon
+                                      aria-hidden="true"
+                                      className={classNames(
+                                        isActive
+                                          ? "text-primary"
+                                          : "text-black group-hover:text-primary",
+                                        "h-5 w-5 shrink-0"
+                                      )}
+                                    />
+                                    {item.name}
+                                  </div>
+                                );
+                              }}
                             </Link>
                           </li>
                         ))}
@@ -155,7 +117,7 @@ export default function AppLayout() {
                         Your teams
                       </div>
                       <ul role="list" className="-mx-2 mt-2 space-y-1">
-                        {teams.map((team) => (
+                        {system.map((team) => (
                           <li key={team.name}>
                             <Link
                               to={team.href}
@@ -203,7 +165,7 @@ export default function AppLayout() {
 
         {/* Static sidebar for desktop */}
         <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 lg:flex-col">
-          {/* Sidebar component, swap this element with another sidebar if you like */}
+          {/* Sidebar component*/}
           <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-gray-800 border-gray-700 border-r px-6 pb-4">
             <div className="flex h-16 shrink-0 items-center bg-gray-200 mt-4 rounded-md">
               <img
@@ -218,31 +180,30 @@ export default function AppLayout() {
                   <ul role="list" className="-mx-2 space-y-1">
                     {navigation.map((item, index) => (
                       <li key={index}>
-                        <Link
-                          to={item.href}
-                          className={classNames(
-                            currentPath === item.href ||
-                              currentPath.includes(
-                                item.name.split(" ")[0].toLowerCase()
-                              )
-                              ? "bg-gray-200 text-primary "
-                              : "text-gray-200 hover:bg-gray-600",
-                            "group flex gap-x-3 rounded-lg px-5 py-3 text-sm  leading-6 capitalize"
-                          )}
-                        >
-                          <item.icon
-                            aria-hidden="true"
-                            className={classNames(
-                              currentPath === item.href ||
-                                currentPath.includes(
-                                  item.name.split(" ")[0].toLowerCase()
-                                )
-                                ? "text-gray-800"
-                                : "text-gray-200 group-hover:text-primary",
-                              "h-5 w-5 shrink-0"
-                            )}
-                          />
-                          {item.name}
+                        <Link to={item.href}>
+                          {({ isActive }) => {
+                            return (
+                              <div
+                                className={classNames(
+                                  isActive
+                                    ? "bg-gray-50 text-gray-900 font-semibold"
+                                    : "text-gray-200 hover:bg-gray-600  font-medium",
+                                  "group flex gap-x-3 rounded-xl px-5 py-3 text-sm leading-6 capitalize transition-all duration-150 ease-in-out"
+                                )}
+                              >
+                                <item.icon
+                                  aria-hidden="true"
+                                  className={classNames(
+                                    isActive
+                                      ? "text-gray-900"
+                                      : "text-gray-200 ",
+                                    "h-5 w-5 shrink-0"
+                                  )}
+                                />
+                                {item.name}
+                              </div>
+                            );
+                          }}
                         </Link>
                       </li>
                     ))}
@@ -282,7 +243,7 @@ export default function AppLayout() {
           </div>
         </div>
 
-        <div className="lg:pl-64 h-screen flex flex-col">
+        <div className="lg:pl-64 flex flex-col">
           <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 bg-gray-900 pr-4 sm:gap-x-6 sm:pr-6 lg:pr-8">
             <button
               type="button"
@@ -332,7 +293,7 @@ export default function AppLayout() {
                         aria-hidden="true"
                         className="ml-4 text-sm leading-none text-left font-semibold text-gray-200"
                       >
-                        Tom Cook <br />{" "}
+                        Mr. Otoo <br />{" "}
                         <span className="font-normal text-xs text-gray-200">
                           Admin
                         </span>
@@ -374,26 +335,22 @@ export default function AppLayout() {
               <div className="flex gap-2.5 items-center text-xs text-gray-500">
                 <p className="text-gray-400 text-sm">
                   Copyright &copy; {new Date().getFullYear().toString()}{" "}
-                  <Link to={"#"}>PKay Software Consultancy</Link>
+                  <a href="#" target="_blank" rel="noopener noreferrer">
+                    PKay Software Consultancy
+                  </a>
                 </p>
-                <Link
-                  to={"#"}
-                  className="hover:text-gray-400 transition-all duration-150 ease-in-out"
-                >
-                  Privacy Policy
-                </Link>
-                <Link
-                  to={"#"}
-                  className="hover:text-gray-400 transition-all duration-150 ease-in-out"
-                >
-                  Term and conditions
-                </Link>
-                <Link
-                  to={"#"}
-                  className="hover:text-gray-400 transition-all duration-150 ease-in-out"
-                >
-                  Contact
-                </Link>
+
+                {legals.map((item, idx) => (
+                  <a
+                    key={idx}
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-gray-400 transition-all duration-150 ease-in-out"
+                  >
+                    {item.label}
+                  </a>
+                ))}
               </div>
 
               <div className="flex items-center gap-3 text-gray-400">

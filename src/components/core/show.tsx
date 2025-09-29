@@ -1,7 +1,7 @@
 import React, { FC, Fragment } from "react";
 
 type Props = {
-  children: JSX.Element | JSX.Element[];
+  children: React.ReactNode;
   if: boolean | number | string | null | undefined;
 };
 

@@ -19,7 +19,6 @@ import TestimonialCarousel from "./components/TestimonialCarousel";
 import DemoModal from "./components/DemoModal";
 import { useInView } from "@/utils/useInView";
 
-
 const EASE = { stiffness: 80, damping: 12 };
 
 export default function LandingPage() {
@@ -27,6 +26,52 @@ export default function LandingPage() {
   const heroReveal = useInView("-10%");
   const featureReveal = useInView("-20%");
   const statsReveal = useInView("-10%");
+  const pricingReveal = useInView("-10%");
+
+  const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
+
+  const plans = [
+    {
+      id: "starter",
+      name: "Starter",
+      priceMonthly: 0,
+      priceYearly: 0,
+      desc: "Basic tracking for small teams",
+      features: ["Up to 3 projects", "Indicators & dashboards", "CSV export"],
+      cta: "Start free",
+      popular: false,
+    },
+    {
+      id: "pro",
+      name: "Pro",
+      priceMonthly: 49,
+      priceYearly: 480, // 2 months free
+      desc: "Everything teams need to scale",
+      features: [
+        "Unlimited projects",
+        "Automated reports",
+        "Offline sync",
+        "Priority support",
+      ],
+      cta: "Start 14-day trial",
+      popular: true,
+    },
+    {
+      id: "enterprise",
+      name: "Enterprise",
+      priceMonthly: 199,
+      priceYearly: 1990,
+      desc: "Custom solutions for orgs",
+      features: [
+        "Custom SLAs",
+        "SAML SSO",
+        "Dedicated onboarding",
+        "Custom integrations",
+      ],
+      cta: "Contact sales",
+      popular: false,
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#071022] via-[#041226] to-[#021018] text-white antialiased overflow-x-hidden">
@@ -361,6 +406,212 @@ export default function LandingPage() {
               title="Roles & Workflows"
               subtitle="Manage teams, approvals and data collection flows for field staff."
             />
+          </motion.div>
+        </section>
+
+        {/* Pricing */}
+        <section id="pricing" className="mt-20" ref={pricingReveal.ref as any}>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold">
+                Pricing plan built for teams
+              </h2>
+              <p className="text-gray-400 mt-2 max-w-xl">
+                Transparent billing — scale up as you grow. Monthly and yearly
+                options available.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="text-sm text-gray-300">Billing</div>
+              <div className="bg-gray-800 border border-gray-700 rounded-full p-1 flex items-center">
+                <button
+                  onClick={() => setBilling("monthly")}
+                  className={`px-3 py-1 rounded-full cursor-pointer ${
+                    billing === "monthly"
+                      ? "bg-white text-black"
+                      : "text-gray-300"
+                  }`}
+                >
+                  Monthly
+                </button>
+                <button
+                  onClick={() => setBilling("yearly")}
+                  className={`px-3 py-1 rounded-full cursor-pointer ${
+                    billing === "yearly"
+                      ? "bg-white text-black"
+                      : "text-gray-300"
+                  }`}
+                >
+                  Yearly
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+            {plans.map((plan) => (
+              <motion.div
+                key={plan.id}
+                whileHover={{ y: -6 }}
+                transition={{ type: "spring", stiffness: 200, damping: 18 }}
+                className={`p-6 rounded-2xl border ${
+                  plan.popular
+                    ? "border-yellow-500 shadow-lg bg-gradient-to-b from-[#1a1720] to-[#0f1720]"
+                    : "border-gray-700 bg-gray-800"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm text-gray-300">{plan.name}</div>
+                    <div className="text-2xl font-bold mt-2 flex items-baseline gap-2">
+                      {billing === "monthly" ? (
+                        <>
+                          <span className="text-3xl">
+                            {plan.priceMonthly === 0
+                              ? "Free"
+                              : `GHC${plan.priceMonthly}`}
+                          </span>
+                          {plan.priceMonthly !== 0 && (
+                            <span className="text-sm text-gray-400">/mo</span>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-3xl">
+                            {plan.priceYearly === 0
+                              ? "Free"
+                              : `GHC${plan.priceYearly}`}
+                          </span>
+                          {plan.priceYearly !== 0 && (
+                            <span className="text-sm text-gray-400">/yr</span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    <div className="text-gray-400 text-sm mt-2">
+                      {plan.desc}
+                    </div>
+                  </div>
+                  {plan.popular && (
+                    <div className="bg-yellow-500 text-black text-xs font-semibold px-2 py-1 rounded">
+                      Popular
+                    </div>
+                  )}
+                </div>
+
+                <ul className="mt-6 space-y-3 text-gray-200">
+                  {plan.features.map((f) => (
+                    <li key={f} className="flex items-center gap-3 text-sm">
+                      <CheckCircle className="w-4 h-4 text-green-400" /> {f}
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="mt-6">
+                  {plan.id === "enterprise" ? (
+                    <button className="w-full cursor-pointer bg-transparent border border-gray-600 text-gray-200 rounded-full py-2">
+                      Contact sales
+                    </button>
+                  ) : (
+                    <button className="w-full bg-primary text-white font-semibold rounded-full py-2">
+                      {plan.cta}
+                    </button>
+                  )}
+                </div>
+
+                <div className="mt-4 text-xs text-gray-400">
+                  {plan.id !== "enterprise"
+                    ? billing === "yearly"
+                      ? "Billed yearly. Cancel anytime."
+                      : "Billed monthly. Cancel anytime."
+                    : "Custom billing and contracts available."}
+                </div>
+              </motion.div>
+            ))}
+          </div>
+          {/* pricing details / comparison */}
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={pricingReveal.inView ? { opacity: 1, y: 0 } : {}}
+            transition={{ delay: 0.12 }}
+            className="mt-8 bg-gray-800 rounded-2xl p-6 border border-gray-700"
+          >
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-300">Compare plans</div>
+              <div className="text-xs text-gray-400">
+                Most teams start on Pro
+              </div>
+            </div>
+
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="text-gray-400 border-b border-gray-700">
+                  <tr>
+                    <th className="p-3">Feature</th>
+                    <th className="p-3">Starter</th>
+                    <th className="p-3">Pro</th>
+                    <th className="p-3">Enterprise</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    "Projects",
+                    "Automated reports",
+                    "Offline sync",
+                    "SAML SSO",
+                    "Dedicated support",
+                  ].map((f, i) => (
+                    <tr
+                      key={f}
+                      className={`border-b border-gray-700 ${
+                        i % 2 === 0 ? "bg-gray-900/20" : ""
+                      }`}
+                    >
+                      <td className="p-3 text-gray-300">{f}</td>
+                      <td className="p-3">
+                        {f === "Projects"
+                          ? "Up to 3"
+                          : f === "Automated reports"
+                          ? "Basic"
+                          : f === "Offline sync"
+                          ? "—"
+                          : f === "SAML SSO"
+                          ? "—"
+                          : f === "Dedicated support"
+                          ? "Community"
+                          : ""}
+                      </td>
+                      <td className="p-3">
+                        {f === "Projects"
+                          ? "Unlimited"
+                          : f === "Automated reports"
+                          ? "Advanced"
+                          : f === "Offline sync"
+                          ? "Included"
+                          : f === "SAML SSO"
+                          ? "—"
+                          : f === "Dedicated support"
+                          ? "Priority"
+                          : ""}
+                      </td>
+                      <td className="p-3">
+                        {f === "Projects"
+                          ? "Unlimited"
+                          : f === "Automated reports"
+                          ? "Advanced"
+                          : f === "Offline sync"
+                          ? "Included"
+                          : f === "SAML SSO"
+                          ? "Included"
+                          : f === "Dedicated support"
+                          ? "Dedicated CSM"
+                          : ""}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </motion.div>
         </section>
 

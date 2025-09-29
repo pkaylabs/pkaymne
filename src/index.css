@@ -1,37 +1,49 @@
 @import "tailwindcss";
 
-input:-webkit-autofill {
-  -webkit-box-shadow: 0 0 0 1000px transparent inset !important; /* Override the default blue background with a white background */
-}
-
-/* Remove autofill background for Firefox */
-input:-moz-autofill {
-  box-shadow: 0 0 0 1000px transparent inset !important; /* Override the default blue background with a white background */
-}
-
-@layer utilities {
+@layer base {
   * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
   }
 
+  html {
+    scroll-behavior: smooth;
+    background-color: #101828;
+  }
+
+  body {
+    background-color: #101828;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+  }
+
+  #root {
+    min-height: 100vh;
+    background-color: #101828;
+  }
+}
+
+input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
+}
+
+input:-moz-autofill {
+  box-shadow: 0 0 0 1000px transparent inset !important;
+}
+
+@layer utilities {
   /* Hide scrollbar for Chrome, Safari and Opera */
   .no-scrollbar::-webkit-scrollbar {
     display: none !important;
   }
 
   /* Hide scrollbar for IE, Edge and Firefox */
-
   .no-scrollbar {
-    -ms-overflow-style: none !important; /* IE and Edge */
-    scrollbar-width: none !important; /* Firefox */
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
   }
-}
-
-html {
-  scroll-behavior: smooth;
-  background-color: #101828;
 }
 
 @keyframes wave {

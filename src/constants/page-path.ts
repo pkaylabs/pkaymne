@@ -1,5 +1,6 @@
-export const DASHBOARD = "/";
-export const OBJECTIVES = "/objectives";
+export const DASHBOARD = "/dashboard";
+export const OBJECTIVES = "/objective";
+export const OUTCOME = "/outcome";
 export const INDICATORS = "/indicators";
 export const REPORTS = "/reports";
 export const SETTINGS = "/settings";

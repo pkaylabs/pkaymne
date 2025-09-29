@@ -1,9 +1,12 @@
-import React from "react";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 import logo from "@/assets/images/logo.png";
 import render from "@/assets/images/render.jpg";
-import { Link, Navigate, Outlet, useLocation } from "react-location";
 
-export default function AuthLayout() {
+export const Route = createFileRoute("/_auth")({
+  component: RouteComponent,
+});
+
+function RouteComponent() {
   return (
     <main className="w-full h-screen flex justify-between items-center">
       <div className="flex-1 h-full overflow-hidden">

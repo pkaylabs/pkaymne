@@ -91,7 +91,7 @@ function AppLayout() {
                                       isActive
                                         ? "g-primary-50 text-primary font-semibold"
                                         : "text-gray-800 hover:bg-gray-50 hover:text-primary-600 font-medium",
-                                      "group flex gap-x-3 rounded-xl px-5 py-3 text-sm  leading-6 capitalize"
+                                      "group flex gap-x-3 rounded-xl px-5 py-1 text-sm  leading-6 capitalize"
                                     )}
                                   >
                                     <item.icon
@@ -188,7 +188,7 @@ function AppLayout() {
                                   isActive
                                     ? "bg-gray-50 text-gray-900 font-semibold"
                                     : "text-gray-200 hover:bg-gray-600  font-medium",
-                                  "group flex gap-x-3 rounded-xl px-5 py-3 text-sm leading-6 capitalize transition-all duration-150 ease-in-out"
+                                  "group mx-2 flex items-center gap-x-3 rounded-md px-3 py-2 text-sm leading-6 capitalize transition-all duration-150 ease-in-out"
                                 )}
                               >
                                 <item.icon
@@ -213,13 +213,32 @@ function AppLayout() {
                   <ul role="list" className="-mx-2 mt-2 space-y-1">
                     <Link
                       to={SETTINGS}
-                      className="group -mx-2 flex gap-x-3 rounded-md px-5 py-3 text-sm/6 font-semibold text-gray-200 hover:bg-gray-600 "
+                      
                     >
-                      <Cog6ToothIcon
-                        aria-hidden="true"
-                        className="size-6 shrink-0 text-gray-200 group-hover:text-primary-600"
-                      />
-                      Settings
+                      {({ isActive }) => {
+                            return (
+                              <div
+                                className={classNames(
+                                  isActive
+                                    ? "bg-gray-50 text-gray-900 font-semibold"
+                                    : "text-gray-200 hover:bg-gray-600  font-medium",
+                                   "group mx-2 flex items-center gap-x-3 rounded-md px-3 py-3 text-sm leading-6 capitalize transition-all duration-150 ease-in-out"
+                                )}
+                              >
+                                <Cog6ToothIcon
+                                  aria-hidden="true"
+                                  className={classNames(
+                                    isActive
+                                      ? "text-gray-900"
+                                      : "text-gray-200 ",
+                                    "h-5 w-5 shrink-0"
+                                  )}
+                                />
+                                Settings
+                              </div>
+                            );
+                          }}
+
                     </Link>
                   </ul>
                 </li>

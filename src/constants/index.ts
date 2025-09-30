@@ -4,7 +4,6 @@ import {
   INDICATORS,
   OBJECTIVES,
   SETTINGS,
-  OUTCOME,
 } from "@/constants/page-path";
 import {
   FolderIcon,
@@ -25,6 +24,11 @@ export const navigation = [
   // { name: "Objectives", href: OBJECTIVES, icon: UsersIcon },
   { name: "Indicators", href: INDICATORS, icon: FolderIcon },
   { name: "Reports", href: REPORTS, icon: LuStethoscope },
+  { name: "Forms", href: REPORTS, icon: LuStethoscope },
+  { name: "Departments", href: REPORTS, icon: LuStethoscope },
+  { name: "Organisations", href: REPORTS, icon: LuStethoscope },
+  { name: "Users", href: REPORTS, icon: LuStethoscope },
+
 ];
 
 export const system: System[] = [
@@ -33,6 +37,20 @@ export const system: System[] = [
     name: "Settings",
     href: SETTINGS,
     initial: "S",
+    current: false,
+  },
+  {
+    id: 2,
+    name: "Packages",
+    href: SETTINGS,
+    initial: "P",
+    current: false,
+  },
+  {
+    id: 3,
+    name: "Subscriptions",
+    href: SETTINGS,
+    initial: "Su",
     current: false,
   },
 ];

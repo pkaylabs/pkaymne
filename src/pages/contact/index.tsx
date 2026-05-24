@@ -8,8 +8,8 @@ import SiteNav from "@/components/public/SiteNav";
 type AuthMode = "login" | "signup";
 
 const contactCards = [
-  ["Email", "hello@pkaymne.com", Mail],
-  ["Phone", "+233 000 000 000", Phone],
+  ["Email", "pkaysoftwareconsultancy@gmail.com", Mail],
+  ["Phone", "+233 558 366 133", Phone],
   ["Office", "Accra, Ghana", MapPin],
 ] as const;
 

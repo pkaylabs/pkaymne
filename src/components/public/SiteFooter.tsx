@@ -44,8 +44,8 @@ export default function SiteFooter() {
         <div>
           <h3 className="font-semibold">Contact</h3>
           <div className="mt-4 space-y-3 text-sm text-slate-300">
-            <p className="flex gap-2"><Mail className="h-4 w-4 text-blue-300" /> hello@pkaymne.com</p>
-            <p className="flex gap-2"><Phone className="h-4 w-4 text-blue-300" /> +233 000 000 000</p>
+            <p className="flex gap-2"><Mail className="h-4 w-4 text-blue-300" /> pkaysoftwareconsultancy@gmail.com</p>
+            <p className="flex gap-2"><Phone className="h-4 w-4 text-blue-300" /> +233 558 366 133</p>
             <p className="flex gap-2"><MapPin className="h-4 w-4 text-blue-300" /> Accra, Ghana</p>
             <p className="flex gap-2"><BarChart3 className="h-4 w-4 text-blue-300" /> Built for evidence teams</p>
           </div>

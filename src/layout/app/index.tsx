@@ -15,6 +15,7 @@ import {
   ClipboardDocumentListIcon,
   Cog6ToothIcon,
   FolderIcon,
+  RectangleGroupIcon,
   UserGroupIcon,
   UsersIcon,
   XMarkIcon,
@@ -38,6 +39,7 @@ import {
   OBJECTIVES,
   SETTINGS,
   USERS,
+  SYSTEM,
 } from "@/constants/page-path";
 import classNames from "@/utils/classnames";
 
@@ -48,6 +50,10 @@ const navigation = [
   { name: "Indicators", href: INDICATORS, icon: FolderIcon },
   { name: "Reports", href: REPORTS, icon: LuStethoscope },
   { name: "Users", href: USERS, icon: UserGroupIcon },
+];
+
+const systemNavigation = [
+  { name: "System", href: SYSTEM, icon: RectangleGroupIcon },
 ];
 
 const teams = [
@@ -81,7 +87,7 @@ export default function AppLayout() {
   const pageTitle =
     navigation.find((item) =>
       item.href === DASHBOARD ? currentPath === DASHBOARD : currentPath.startsWith(item.href)
-    )?.name ?? (isActive(SETTINGS) ? "Settings" : "Dashboard");
+    )?.name ?? systemNavigation.find((item) => currentPath.startsWith(item.href))?.name ?? (isActive(SETTINGS) ? "Settings" : "Dashboard");
 
   return (
     <>
@@ -146,6 +152,28 @@ export default function AppLayout() {
                                   isActive(item.href)
                                     ? "text-primary"
                                     : "text-black group-hover:text-primary",
+                                  "h-5 w-5 shrink-0"
+                                )}
+                              />
+                              {item.name}
+                            </Link>
+                          </li>
+                        ))}
+                        {systemNavigation.map((item, index) => (
+                          <li key={`system-${index}`}>
+                            <Link
+                              to={item.href}
+                              className={classNames(
+                                isActive(item.href)
+                                  ? "bg-primary-50 text-primary font-semibold"
+                                  : "text-gray-800 hover:bg-gray-50 hover:text-primary-600 font-medium",
+                                "group flex gap-x-3 rounded-xl px-5 py-3 text-sm leading-6 capitalize"
+                              )}
+                            >
+                              <item.icon
+                                aria-hidden="true"
+                                className={classNames(
+                                  isActive(item.href) ? "text-primary" : "text-black group-hover:text-primary",
                                   "h-5 w-5 shrink-0"
                                 )}
                               />
@@ -230,6 +258,33 @@ export default function AppLayout() {
                               ? "bg-gray-200 text-primary "
                               : "text-gray-200 hover:bg-gray-600",
                             "group flex gap-x-3 rounded-lg px-5 py-3 text-sm  leading-6 capitalize"
+                          )}
+                        >
+                          <item.icon
+                            aria-hidden="true"
+                            className={classNames(
+                              isActive(item.href)
+                                ? "text-gray-800"
+                                : "text-gray-200 group-hover:text-primary",
+                              "h-5 w-5 shrink-0"
+                            )}
+                          />
+                          {item.name}
+                        </Link>
+                      </li>
+                    ))}
+                    <li className="pt-4">
+                      <div className="px-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Super User</div>
+                    </li>
+                    {systemNavigation.map((item, index) => (
+                      <li key={`system-${index}`}>
+                        <Link
+                          to={item.href}
+                          className={classNames(
+                            isActive(item.href)
+                              ? "bg-gray-200 text-primary"
+                              : "text-gray-200 hover:bg-gray-600",
+                            "group flex gap-x-3 rounded-lg px-5 py-3 text-sm leading-6 capitalize"
                           )}
                         >
                           <item.icon

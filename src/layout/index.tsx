@@ -5,6 +5,7 @@ import { useMatches } from "react-location";
 import _404Layout from "./_404";
 import AppLayout from "./app";
 import AuthLayout from "./auth";
+import PublicLayout from "./public";
 
 
 const LayoutProvider: FC = () => {
@@ -20,6 +21,9 @@ const LayoutProvider: FC = () => {
     }
     case "Auth": {
       return <AuthLayout />;
+    }
+    case "Public": {
+      return <PublicLayout />;
     }
     default: {
       return <_404Layout />;

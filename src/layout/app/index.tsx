@@ -12,6 +12,7 @@ import {
 import {
   Bars3Icon,
   BellIcon,
+  ClipboardDocumentListIcon,
   Cog6ToothIcon,
   FolderIcon,
   UsersIcon,
@@ -31,6 +32,7 @@ import sideImge from "@/assets/images/side.png";
 
 import {
   DASHBOARD,
+  PROJECTS,
   REPORTS,
   INDICATORS,
   OBJECTIVES,
@@ -40,8 +42,8 @@ import classNames from "@/utils/classnames";
 
 const navigation = [
   { name: "Dashboard", href: DASHBOARD, icon: MdOutlineDashboard },
+  { name: "Projects", href: PROJECTS, icon: ClipboardDocumentListIcon },
   { name: "Outcomes", href: OBJECTIVES, icon: UsersIcon },
-  // { name: "Objectives", href: OBJECTIVES, icon: UsersIcon },
   { name: "Indicators", href: INDICATORS, icon: FolderIcon },
   { name: "Reports", href: REPORTS, icon: LuStethoscope },
 ];

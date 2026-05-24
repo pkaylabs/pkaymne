@@ -74,6 +74,12 @@ export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const currentPath = useLocation().current.pathname;
+  const pageTitle =
+    navigation.find((item) =>
+      item.href === DASHBOARD ? currentPath === DASHBOARD : currentPath.startsWith(item.href)
+    )?.name ?? "Dashboard";
+  const isActive = (href: string) =>
+    href === DASHBOARD ? currentPath === DASHBOARD : currentPath.startsWith(href);
 
   return (
     <>
@@ -126,10 +132,7 @@ export default function AppLayout() {
                             <Link
                               to={item.href}
                               className={classNames(
-                                currentPath === item.href ||
-                                  currentPath.includes(
-                                    item.name.split(" ")[0].toLowerCase()
-                                  )
+                                isActive(item.href)
                                   ? "bg-primary-50 text-primary font-semibold"
                                   : "text-gray-800 hover:bg-gray-50 hover:text-primary-600 font-medium",
                                 "group flex gap-x-3 rounded-xl px-5 py-3 text-sm  leading-6 capitalize"
@@ -138,10 +141,7 @@ export default function AppLayout() {
                               <item.icon
                                 aria-hidden="true"
                                 className={classNames(
-                                  currentPath === item.href ||
-                                    currentPath.includes(
-                                      item.name.split(" ")[0].toLowerCase()
-                                    )
+                                  isActive(item.href)
                                     ? "text-primary"
                                     : "text-black group-hover:text-primary",
                                   "h-5 w-5 shrink-0"
@@ -224,10 +224,7 @@ export default function AppLayout() {
                         <Link
                           to={item.href}
                           className={classNames(
-                            currentPath === item.href ||
-                              currentPath.includes(
-                                item.name.split(" ")[0].toLowerCase()
-                              )
+                            isActive(item.href)
                               ? "bg-gray-200 text-primary "
                               : "text-gray-200 hover:bg-gray-600",
                             "group flex gap-x-3 rounded-lg px-5 py-3 text-sm  leading-6 capitalize"
@@ -236,10 +233,7 @@ export default function AppLayout() {
                           <item.icon
                             aria-hidden="true"
                             className={classNames(
-                              currentPath === item.href ||
-                                currentPath.includes(
-                                  item.name.split(" ")[0].toLowerCase()
-                                )
+                              isActive(item.href)
                                 ? "text-gray-800"
                                 : "text-gray-200 group-hover:text-primary",
                               "h-5 w-5 shrink-0"
@@ -304,7 +298,7 @@ export default function AppLayout() {
 
             <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
               <div className="font-semibold text-lg text-gray-200 flex-1 flex items-center pl-6">
-                Dashboard
+                {pageTitle}
               </div>
               <div className="flex items-center gap-x-4 lg:gap-x-6">
                 <button

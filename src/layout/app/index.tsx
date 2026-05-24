@@ -14,7 +14,9 @@ import {
   BellIcon,
   ClipboardDocumentListIcon,
   Cog6ToothIcon,
+  CreditCardIcon,
   FolderIcon,
+  MagnifyingGlassIcon,
   RectangleGroupIcon,
   UserGroupIcon,
   UsersIcon,
@@ -37,6 +39,7 @@ import {
   REPORTS,
   INDICATORS,
   OBJECTIVES,
+  OPERATIONS,
   SETTINGS,
   USERS,
   SYSTEM,
@@ -49,6 +52,7 @@ const navigation = [
   { name: "Outcomes", href: OBJECTIVES, icon: UsersIcon },
   { name: "Indicators", href: INDICATORS, icon: FolderIcon },
   { name: "Reports", href: REPORTS, icon: LuStethoscope },
+  { name: "Operations", href: OPERATIONS, icon: CreditCardIcon },
   { name: "Users", href: USERS, icon: UserGroupIcon },
 ];
 
@@ -80,6 +84,8 @@ const userNavigation = [
 
 export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   const currentPath = useLocation().current.pathname;
   const isActive = (href: string) =>
@@ -88,6 +94,22 @@ export default function AppLayout() {
     navigation.find((item) =>
       item.href === DASHBOARD ? currentPath === DASHBOARD : currentPath.startsWith(item.href)
     )?.name ?? systemNavigation.find((item) => currentPath.startsWith(item.href))?.name ?? (isActive(SETTINGS) ? "Settings" : "Dashboard");
+
+  const commandItems = [
+    { label: "Open billing self-service", href: `${OPERATIONS}/billing`, meta: "Operations" },
+    { label: "Review notifications", href: `${OPERATIONS}/notifications`, meta: "Operations" },
+    { label: "Search audit log", href: `${OPERATIONS}/audit`, meta: "Operations" },
+    { label: "Import indicators from Excel", href: `${OPERATIONS}/imports`, meta: "Data" },
+    { label: "Preview workspace roles", href: `${OPERATIONS}/permissions`, meta: "Access" },
+    { label: "Manage subscription packages", href: `${SYSTEM}/packages`, meta: "Super User" },
+    { label: "View companies", href: `${SYSTEM}/companies`, meta: "Super User" },
+  ];
+
+  const notificationItems = [
+    { title: "Submission sync delayed", body: "23 tablet submissions are waiting for connectivity.", tone: "warning" },
+    { title: "Report export complete", body: "Quarterly WASH report is ready for download.", tone: "success" },
+    { title: "Payment captured", body: "Growth plan invoice INV-2026-005 was paid.", tone: "info" },
+  ];
 
   return (
     <>
@@ -357,6 +379,16 @@ export default function AppLayout() {
               <div className="flex items-center gap-x-4 lg:gap-x-6">
                 <button
                   type="button"
+                  onClick={() => setCommandOpen(true)}
+                  className="hidden items-center gap-2 rounded-full border border-gray-700 bg-gray-800 px-3 py-2 text-sm font-semibold text-gray-300 transition hover:bg-gray-700 xl:flex"
+                >
+                  <MagnifyingGlassIcon aria-hidden="true" className="h-5 w-5" />
+                  Search
+                  <span className="rounded bg-gray-700 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-gray-400">Ctrl K</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNotificationsOpen(true)}
                   className="-m-2.5 p-2 bg-primary-100 rounded-full text-gray-400 hover:text-gray-500"
                 >
                   <span className="sr-only">View notifications</span>
@@ -461,6 +493,62 @@ export default function AppLayout() {
           </div>
         </div>
       </div>
+      {commandOpen && (
+        <div onClick={() => setCommandOpen(false)} className="fixed inset-0 z-[60] flex items-start justify-center bg-black/50 p-4 pt-24">
+          <div onClick={(event) => event.stopPropagation()} className="w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 text-white shadow-2xl shadow-black/40">
+            <div className="border-b border-slate-700 p-4">
+              <label className="flex items-center gap-3 rounded-xl border border-slate-700 bg-slate-800 px-4">
+                <MagnifyingGlassIcon className="h-5 w-5 shrink-0 text-slate-400" />
+                <input autoFocus className="h-12 min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-slate-500" placeholder="Search projects, reports, users, companies, audit logs..." />
+                <button onClick={() => setCommandOpen(false)} className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-700 hover:text-white" aria-label="Close command palette">
+                  <XMarkIcon className="h-5 w-5" />
+                </button>
+              </label>
+            </div>
+            <div className="max-h-[420px] overflow-y-auto p-2">
+              {commandItems.map((item) => (
+                <Link key={item.label} to={item.href} onClick={() => setCommandOpen(false)} className="flex items-center justify-between rounded-xl px-4 py-3 text-sm transition hover:bg-slate-800">
+                  <span className="font-semibold text-slate-100">{item.label}</span>
+                  <span className="text-xs text-slate-500">{item.meta}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+      {notificationsOpen && (
+        <div onClick={() => setNotificationsOpen(false)} className="fixed inset-0 z-[60] bg-black/40">
+          <aside onClick={(event) => event.stopPropagation()} className="ml-auto flex h-full w-full max-w-md flex-col border-l border-slate-700 bg-slate-900 text-white shadow-2xl">
+            <div className="flex items-start justify-between border-b border-slate-700 p-5">
+              <div>
+                <h2 className="text-xl font-semibold">Notifications</h2>
+                <p className="mt-1 text-sm text-slate-400">Operational alerts across the workspace.</p>
+              </div>
+              <button onClick={() => setNotificationsOpen(false)} className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-white" aria-label="Close notifications">
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex-1 space-y-3 overflow-y-auto p-5">
+              {notificationItems.map((item) => (
+                <div key={item.title} className="rounded-xl border border-slate-700 bg-slate-800/70 p-4">
+                  <div className="flex items-start gap-3">
+                    <span className={classNames(item.tone === "success" ? "bg-emerald-500" : item.tone === "warning" ? "bg-amber-500" : "bg-blue-500", "mt-1 h-2.5 w-2.5 shrink-0 rounded-full")} />
+                    <div>
+                      <h3 className="font-semibold text-slate-100">{item.title}</h3>
+                      <p className="mt-1 text-sm leading-6 text-slate-400">{item.body}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="border-t border-slate-700 p-5">
+              <Link to={`${OPERATIONS}/notifications`} onClick={() => setNotificationsOpen(false)} className="block rounded-xl bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-blue-500">
+                Open notification center
+              </Link>
+            </div>
+          </aside>
+        </div>
+      )}
     </>
   );
 }

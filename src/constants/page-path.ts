@@ -7,6 +7,7 @@ export const OBJECTIVES = "/dashboard/outcomes";
 export const INDICATORS = "/dashboard/indicators";
 export const REPORTS = "/dashboard/reports";
 export const USERS = "/dashboard/users";
+export const OPERATIONS = "/dashboard/operations";
 export const SYSTEM = "/dashboard/system";
 export const SETTINGS = "/dashboard/settings";
 

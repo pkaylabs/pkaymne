@@ -15,6 +15,7 @@ import {
   ClipboardDocumentListIcon,
   Cog6ToothIcon,
   FolderIcon,
+  UserGroupIcon,
   UsersIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
@@ -28,7 +29,6 @@ import { AiOutlineYoutube } from "react-icons/ai";
 import { CiLinkedin } from "react-icons/ci";
 import { MdOutlineDashboard } from "react-icons/md";
 import { LuStethoscope } from "react-icons/lu";
-import sideImge from "@/assets/images/side.png";
 
 import {
   DASHBOARD,
@@ -37,6 +37,7 @@ import {
   INDICATORS,
   OBJECTIVES,
   SETTINGS,
+  USERS,
 } from "@/constants/page-path";
 import classNames from "@/utils/classnames";
 
@@ -46,6 +47,7 @@ const navigation = [
   { name: "Outcomes", href: OBJECTIVES, icon: UsersIcon },
   { name: "Indicators", href: INDICATORS, icon: FolderIcon },
   { name: "Reports", href: REPORTS, icon: LuStethoscope },
+  { name: "Users", href: USERS, icon: UserGroupIcon },
 ];
 
 const teams = [
@@ -74,12 +76,12 @@ export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const currentPath = useLocation().current.pathname;
+  const isActive = (href: string) =>
+    href === DASHBOARD ? currentPath === DASHBOARD : currentPath.startsWith(href);
   const pageTitle =
     navigation.find((item) =>
       item.href === DASHBOARD ? currentPath === DASHBOARD : currentPath.startsWith(item.href)
-    )?.name ?? "Dashboard";
-  const isActive = (href: string) =>
-    href === DASHBOARD ? currentPath === DASHBOARD : currentPath.startsWith(href);
+    )?.name ?? (isActive(SETTINGS) ? "Settings" : "Dashboard");
 
   return (
     <>
@@ -245,35 +247,32 @@ export default function AppLayout() {
                     ))}
                   </ul>
                 </li>
-                <li className="border-t border-gray-500 pt-2">
-                  <ul role="list" className="-mx-2 mt-2 space-y-1">
-                    <Link
-                      to={SETTINGS}
-                      className="group -mx-2 flex gap-x-3 rounded-md px-5 py-3 text-sm/6 font-semibold text-gray-200 hover:bg-gray-600 "
+                <li className="mt-auto">
+                  <Link
+                    to={SETTINGS}
+                    className={classNames(
+                      isActive(SETTINGS)
+                        ? "border-blue-500/40 bg-gray-200 text-gray-900"
+                        : "border-gray-600 bg-gray-900/35 text-gray-200 hover:bg-gray-700",
+                      "group flex items-center gap-3 rounded-lg border p-4 text-sm font-semibold transition"
+                    )}
+                  >
+                    <span
+                      className={classNames(
+                        isActive(SETTINGS) ? "bg-blue-500 text-white" : "bg-gray-700 text-gray-200",
+                        "grid h-10 w-10 place-items-center rounded-lg transition"
+                      )}
                     >
-                      <Cog6ToothIcon
-                        aria-hidden="true"
-                        className="size-6 shrink-0 text-gray-200 group-hover:text-primary-600"
-                      />
+                      <Cog6ToothIcon aria-hidden="true" className="h-5 w-5" />
+                    </span>
+                    <span>
                       Settings
-                    </Link>
-                  </ul>
+                      <span className={classNames(isActive(SETTINGS) ? "text-gray-600" : "text-gray-400", "mt-0.5 block text-xs font-normal")}>
+                        Workspace controls
+                      </span>
+                    </span>
+                  </Link>
                 </li>
-                <div className="mt-auto select-none">
-                  <div className="relative bg-gray-200 p-2 rounded-lg h-40 flex justify-end items-center">
-                    <div className="absolute -left-10 -top-28 select-none">
-                      <img src={sideImge} alt="" className="w-44 h-64" />
-                    </div>
-                    <div className="flex flex-col items-center gap-2.5 ">
-                      <p className="font-semibold text-xs text-center">
-                        Need help? <br /> feel free to contact
-                      </p>
-                      <button className="py-1.5 px-3 bg-blue-500 rounded-full text-xs text-white flex justify-center items-center cursor-pointer">
-                        Get support
-                      </button>
-                    </div>
-                  </div>
-                </div>
               </ul>
             </nav>
           </div>

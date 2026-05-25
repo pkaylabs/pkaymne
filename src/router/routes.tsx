@@ -2,7 +2,7 @@ import { lazy, Suspense } from "react";
 import type React from "react";
 import { Outlet, type Route, type SearchPredicate } from "react-location";
 import type { LocationGenerics } from "./location";
-import { CONTACT, DASHBOARD, HOME, INDICATORS, OBJECTIVES, PRIVACY, PROJECTS, REPORTS, SETTINGS, USERS, SYSTEM } from "@/constants/page-path";
+import { CONTACT, DASHBOARD, HOME, INDICATORS, OBJECTIVES, OPERATIONS, PRIVACY, PROJECTS, REPORTS, SETTINGS, USERS, SYSTEM } from "@/constants/page-path";
 
 const DashboardPage = lazy(() => import("@/pages/dashboard"));
 const ObjectivesPage = lazy(() => import("@/pages/objectives"));
@@ -10,6 +10,7 @@ const IndicatorPage = lazy(() => import("@/pages/indicators"));
 const ReportsPage = lazy(() => import("@/pages/reports"));
 const SettingsPage = lazy(() => import("@/pages/settings"));
 const UsersPage = lazy(() => import("@/pages/users"));
+const OperationsPage = lazy(() => import("@/pages/operations"));
 const SystemPage = lazy(() => import("@/pages/system"));
 const MarketingPage = lazy(() => import("@/pages/marketing"));
 const ProjectsPage = lazy(() => import("@/pages/projects"));
@@ -105,6 +106,20 @@ const routes: RouteProps[] = [
       {
         path: "users",
         element: withPageSuspense(<UsersPage />),
+        meta: {
+          layout: "App",
+        },
+      },
+      {
+        path: "operations/:section",
+        element: withPageSuspense(<OperationsPage />),
+        meta: {
+          layout: "App",
+        },
+      },
+      {
+        path: "operations",
+        element: withPageSuspense(<OperationsPage />),
         meta: {
           layout: "App",
         },

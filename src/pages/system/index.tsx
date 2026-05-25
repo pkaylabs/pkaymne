@@ -82,6 +82,7 @@ export default function SystemPage() {
   const [packageModalOpen, setPackageModalOpen] = useState(false);
   const [packageForm, setPackageForm] = useState(emptyPackage);
   const [localPackages, setLocalPackages] = useState(packages);
+  const [selectedCompany, setSelectedCompany] = useState<CompanyItem | null>(null);
 
   const filteredCompanies = useMemo(() => {
     const needle = query.toLowerCase().trim();
@@ -139,8 +140,10 @@ export default function SystemPage() {
         {section === "packages" && <Packages items={localPackages} onCreate={() => setPackageModalOpen(true)} />}
         {section === "subscriptions" && <Subscriptions />}
         {section === "transactions" && <Transactions />}
-        {section === "companies" && <Companies query={query} setQuery={setQuery} companies={filteredCompanies} />}
+        {section === "companies" && <Companies query={query} setQuery={setQuery} companies={filteredCompanies} onSelect={setSelectedCompany} />}
       </div>
+
+      {selectedCompany && <CompanyDrawer company={selectedCompany} onClose={() => setSelectedCompany(null)} />}
 
       {packageModalOpen && (
         <div onClick={() => setPackageModalOpen(false)} className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -292,7 +295,7 @@ function Transactions() {
   return <DataTable title="Transactions" columns={["Transaction", "Company", "Amount", "Method", "Status", "Date"]} rows={transactions.map((item) => [item.id, item.company, item.amount, item.method, item.status, item.date])} />;
 }
 
-function Companies({ query, setQuery, companies }: { query: string; setQuery: (value: string) => void; companies: CompanyItem[] }) {
+function Companies({ query, setQuery, companies, onSelect }: { query: string; setQuery: (value: string) => void; companies: CompanyItem[]; onSelect: (company: CompanyItem) => void }) {
   return (
     <section className="rounded-lg border border-gray-700 bg-gray-800">
       <div className="grid gap-3 border-b border-gray-700 p-5 lg:grid-cols-[1fr_220px]">
@@ -309,7 +312,7 @@ function Companies({ query, setQuery, companies }: { query: string; setQuery: (v
           </thead>
           <tbody className="divide-y divide-gray-700">
             {companies.map((company) => (
-              <tr key={company.id} className="text-gray-300 transition hover:bg-gray-700/35">
+              <tr key={company.id} onClick={() => onSelect(company)} className="cursor-pointer text-gray-300 transition hover:bg-gray-700/35">
                 <td className="p-3 font-semibold text-white">{company.name}</td>
                 <td className="p-3">{company.plan}</td>
                 <td className="p-3"><StatusBadge status={company.status} /></td>
@@ -323,6 +326,56 @@ function Companies({ query, setQuery, companies }: { query: string; setQuery: (v
         </table>
       </div>
     </section>
+  );
+}
+
+function CompanyDrawer({ company, onClose }: { company: CompanyItem; onClose: () => void }) {
+  const health = company.status === "Suspended" ? "Needs attention" : company.status === "Trial" ? "Trial monitoring" : "Healthy";
+  return (
+    <div onClick={onClose} className="fixed inset-0 z-50 bg-black/40">
+      <aside onClick={(event) => event.stopPropagation()} className="ml-auto flex h-full w-full max-w-xl flex-col border-l border-slate-700 bg-slate-900 text-white shadow-2xl">
+        <div className="flex items-start justify-between border-b border-slate-700 p-6">
+          <div>
+            <p className="text-sm font-semibold text-blue-300">Tenant profile</p>
+            <h2 className="mt-2 text-2xl font-semibold">{company.name}</h2>
+            <p className="mt-1 text-sm text-slate-400">{company.country} - Joined {company.joined}</p>
+          </div>
+          <button onClick={onClose} className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-white" aria-label="Close company details">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="flex-1 space-y-5 overflow-y-auto p-6">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Limit label="Plan" value={company.plan} />
+            <Limit label="Users" value={company.users} />
+            <Limit label="Projects" value={company.projects} />
+          </div>
+          <Panel title="Tenant health">
+            <div className="rounded-lg border border-slate-700 bg-slate-800/70 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-semibold text-white">{health}</span>
+                <StatusBadge status={company.status} />
+              </div>
+              <p className="mt-2 text-sm leading-6 text-slate-400">Usage, billing, access, and project activity summarized for future Super User support workflows.</p>
+            </div>
+          </Panel>
+          <Panel title="Subscription summary">
+            {["Renewal: Dec 31, 2026", "Seats: 37 / 50", "Payment method: Visa ending 4242", "Last invoice: INV-2026-005"].map((item) => (
+              <div key={item} className="rounded-lg border border-slate-700 bg-slate-800/70 p-3 text-sm text-slate-300">{item}</div>
+            ))}
+          </Panel>
+          <Panel title="Recent activity">
+            {["Published Household Intake v3", "Recomputed 184 indicators", "Exported donor report", "Invited 3 field agents"].map((item) => (
+              <div key={item} className="rounded-lg border border-slate-700 bg-slate-800/70 p-3 text-sm text-slate-300">{item}</div>
+            ))}
+          </Panel>
+        </div>
+        <div className="grid gap-3 border-t border-slate-700 p-6 sm:grid-cols-2">
+          <button className="rounded-xl border border-slate-600 px-4 py-3 text-sm font-semibold text-slate-200 transition hover:bg-slate-800">Open billing</button>
+          <button className="rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-500">Impersonate preview</button>
+        </div>
+      </aside>
+    </div>
   );
 }
 

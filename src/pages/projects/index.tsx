@@ -12,8 +12,10 @@ import {
   X,
 } from "lucide-react";
 import type React from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-location";
+import { apiRequest, getDemoToken } from "@/lib/api/client";
+import { projectStatusFromApi, projectStatusToApi } from "@/lib/api/mappers";
 
 type ProjectStatus = "Active" | "Planning" | "Paused" | "Completed";
 type Project = {
@@ -69,6 +71,8 @@ const statuses: Array<ProjectStatus | "All"> = ["All", "Active", "Planning", "Pa
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>(initialProjects);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | "All">("All");
   const [modalOpen, setModalOpen] = useState(false);
@@ -95,6 +99,50 @@ export default function ProjectsPage() {
     return { active, teams, reviews };
   }, [projects]);
 
+  useEffect(() => {
+    let cancelled = false;
+    async function loadProjects() {
+      try {
+        setLoading(true);
+        setError(null);
+        const token = await getDemoToken("admin");
+        const rows = await apiRequest<Array<{
+          id: number;
+          name: string;
+          status: string;
+          department_id: number | null;
+          end_date: string | null;
+        }>>("/projects", { token });
+        const mapped = await Promise.all(
+          rows.map(async (project) => {
+            const [outcomes, indicators] = await Promise.all([
+              apiRequest<unknown[]>(`/projects/${project.id}/outcomes`, { token }),
+              apiRequest<unknown[]>(`/projects/${project.id}/indicators`, { token }),
+            ]);
+            return {
+              id: project.id,
+              name: project.name,
+              owner: project.department_id ? `Department ${project.department_id}` : "Monitoring and Evaluation",
+              status: projectStatusFromApi(project.status),
+              outcomes: outcomes.length,
+              indicators: indicators.length,
+              due: project.end_date ?? "",
+            };
+          }),
+        );
+        if (!cancelled) setProjects(mapped);
+      } catch (caught) {
+        if (!cancelled) setError(caught instanceof Error ? caught.message : "Could not load projects.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    loadProjects();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const openCreate = () => {
     setEditingProject(null);
     setForm(emptyForm);
@@ -114,18 +162,30 @@ export default function ProjectsPage() {
     setModalOpen(true);
   };
 
-  const saveProject = () => {
+  const saveProject = async () => {
     if (!form.name.trim() || !form.owner.trim()) return;
+    const token = await getDemoToken("admin");
     if (editingProject) {
+      await apiRequest(`/projects/${editingProject.id}`, {
+        method: "PATCH",
+        token,
+        body: JSON.stringify({ name: form.name, status: projectStatusToApi(form.status), end_date: form.due || null }),
+      });
       setProjects((items) => items.map((item) => (item.id === editingProject.id ? { ...item, ...form } : item)));
     } else {
-      const nextId = Math.max(0, ...projects.map((project) => project.id)) + 1;
-      setProjects((items) => [...items, { id: nextId, ...form }]);
+      const created = await apiRequest<{ id: number }>("/projects", {
+        method: "POST",
+        token,
+        body: JSON.stringify({ name: form.name, status: projectStatusToApi(form.status), end_date: form.due || null }),
+      });
+      setProjects((items) => [...items, { id: created.id, ...form, outcomes: 0, indicators: 0 }]);
     }
     setModalOpen(false);
   };
 
-  const deleteProject = (id: number) => {
+  const deleteProject = async (id: number) => {
+    const token = await getDemoToken("admin");
+    await apiRequest(`/projects/${id}`, { method: "DELETE", token });
     setProjects((items) => items.filter((item) => item.id !== id));
   };
 
@@ -187,6 +247,8 @@ export default function ProjectsPage() {
             </label>
           </div>
           <div className="overflow-x-auto">
+            {loading && <div className="p-6 text-sm text-gray-400">Loading project portfolio...</div>}
+            {error && <div className="p-6 text-sm text-red-300">{error}</div>}
             <table className="w-full">
               <thead className="border-b border-gray-700 text-left text-sm text-gray-400">
                 <tr>

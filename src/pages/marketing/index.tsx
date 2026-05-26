@@ -21,7 +21,7 @@ import AuthModals from "@/components/public/AuthModals";
 import HeroScene from "@/components/public/HeroScene";
 import SiteFooter from "@/components/public/SiteFooter";
 import SiteNav from "@/components/public/SiteNav";
-import { CONTACT, DASHBOARD } from "@/constants/page-path";
+import { CONTACT } from "@/constants/page-path";
 
 type AuthMode = "login" | "signup";
 

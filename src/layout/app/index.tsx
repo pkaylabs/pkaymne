@@ -23,7 +23,7 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
-import { Link, Outlet, useLocation, useRouter } from "react-location";
+import { Link, Outlet, useLocation } from "react-location";
 import logo from "@/assets/images/logo.png";
 import { CiFacebook } from "react-icons/ci";
 import { FaXTwitter } from "react-icons/fa6";

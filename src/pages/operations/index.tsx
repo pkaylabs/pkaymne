@@ -21,7 +21,9 @@ import {
 import type React from "react";
 import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-location";
+import { ActionMenu } from "@/components/core/action-menu";
 import { OPERATIONS } from "@/constants/page-path";
+import logoUrl from "@/assets/images/logo.png";
 
 type Section = "billing" | "notifications" | "audit" | "imports" | "permissions" | "workspace";
 type ImportStatus = "Validated" | "Needs Review" | "Queued" | "Imported";
@@ -41,6 +43,7 @@ const invoices = [
   { id: "INV-2026-004", date: "Apr 22, 2026", amount: "$299.00", status: "Paid", method: "Visa ending 4242" },
   { id: "INV-2026-003", date: "Mar 22, 2026", amount: "$299.00", status: "Paid", method: "Bank transfer" },
 ];
+type Invoice = (typeof invoices)[number];
 
 const notifications = [
   { id: 1, title: "Quarterly WASH report exported", body: "Executive summary PDF is ready for review.", project: "WASH Baseline 2026", time: "12 min ago", tone: "success" as NotificationTone, unread: true },
@@ -151,6 +154,23 @@ export default function OperationsPage() {
 }
 
 function Billing({ onUpgrade }: { onUpgrade: () => void }) {
+  const downloadInvoice = (invoice: Invoice) => {
+    void downloadInvoicePdf(invoice);
+  };
+
+  const downloadInvoicePdf = async (invoice: Invoice) => {
+    const logo = await loadLogoAsJpeg(logoUrl);
+    const blob = buildInvoicePdf(invoice, logo);
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${invoice.id}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
       <section className="rounded-lg border border-gray-700 bg-gray-800">
@@ -186,7 +206,12 @@ function Billing({ onUpgrade }: { onUpgrade: () => void }) {
                 <span className="text-gray-300">{invoice.date}</span>
                 <span className="text-gray-300">{invoice.amount}</span>
                 <span className="text-gray-400">{invoice.method}</span>
-                <button className="inline-flex items-center gap-1 text-blue-300"><Download className="h-4 w-4" />PDF</button>
+                <ActionMenu
+                  label={`Actions for ${invoice.id}`}
+                  items={[
+                    { label: "Download invoice", icon: <Download />, onClick: () => downloadInvoice(invoice) },
+                  ]}
+                />
               </div>
             ))}
           </div>
@@ -216,8 +241,10 @@ function Billing({ onUpgrade }: { onUpgrade: () => void }) {
 
 function Notifications() {
   const [channel, setChannel] = useState("All");
+  const [selected, setSelected] = useState<(typeof notifications)[number] | null>(null);
   const filtered = notifications.filter((item) => channel === "All" || item.tone === channel.toLowerCase());
   return (
+    <>
     <section className="rounded-lg border border-gray-700 bg-gray-800">
       <div className="flex flex-col gap-3 border-b border-gray-700 p-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
@@ -231,7 +258,7 @@ function Notifications() {
         </div>
       </div>
       <div className="divide-y divide-gray-700">
-        {filtered.map((item) => <NotificationRow key={item.id} item={item} />)}
+        {filtered.map((item) => <NotificationRow key={item.id} item={item} onOpen={setSelected} />)}
       </div>
       <div className="grid gap-4 border-t border-gray-700 p-5 lg:grid-cols-3">
         {["Email digests", "In-app alerts", "Escalations"].map((item) => (
@@ -245,6 +272,8 @@ function Notifications() {
         ))}
       </div>
     </section>
+    {selected && <NotificationModal item={selected} onClose={() => setSelected(null)} />}
+    </>
   );
 }
 
@@ -322,7 +351,12 @@ function ImportExport({ onImport }: { onImport: () => void }) {
                   <p className="font-semibold text-white">{item.name}</p>
                   <p className="mt-1 text-sm text-gray-400">{item.format} - {item.schedule}</p>
                 </div>
-                <button className="rounded-lg border border-gray-700 p-2 text-gray-300 transition hover:bg-gray-700" aria-label={`Export ${item.name}`}><Download className="h-4 w-4" /></button>
+                <ActionMenu
+                  label={`Actions for ${item.name}`}
+                  items={[
+                    { label: "Run export", icon: <Download />, onClick: () => undefined },
+                  ]}
+                />
               </div>
               <p className="mt-3 text-xs text-gray-500">Last run {item.lastRun}</p>
             </div>
@@ -458,7 +492,7 @@ function ModalActions({ onClose, primary }: { onClose: () => void; primary: stri
   );
 }
 
-function NotificationRow({ item }: { item: (typeof notifications)[number] }) {
+function NotificationRow({ item, onOpen }: { item: (typeof notifications)[number]; onOpen: (item: (typeof notifications)[number]) => void }) {
   const Icon = item.tone === "success" ? CheckCircle2 : item.tone === "danger" ? AlertCircle : item.tone === "warning" ? Clock3 : Bell;
   const tone = item.tone === "success" ? "text-emerald-300 bg-emerald-500/10" : item.tone === "danger" ? "text-red-300 bg-red-500/10" : item.tone === "warning" ? "text-amber-300 bg-amber-500/10" : "text-blue-300 bg-blue-500/10";
   return (
@@ -472,9 +506,149 @@ function NotificationRow({ item }: { item: (typeof notifications)[number] }) {
         <p className="mt-1 text-sm text-gray-400">{item.body}</p>
         <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-500"><span>{item.project}</span><span>{item.time}</span></div>
       </div>
-      <button className="hidden rounded-lg border border-gray-700 px-3 py-2 text-sm font-semibold text-gray-300 transition hover:bg-gray-700 sm:block">Open</button>
+      <button onClick={() => onOpen(item)} className="hidden rounded-lg border border-gray-700 px-3 py-2 text-sm font-semibold text-gray-300 transition hover:bg-gray-700 sm:block">Open</button>
     </div>
   );
+}
+
+function NotificationModal({ item, onClose }: { item: (typeof notifications)[number]; onClose: () => void }) {
+  const Icon = item.tone === "success" ? CheckCircle2 : item.tone === "danger" ? AlertCircle : item.tone === "warning" ? Clock3 : Bell;
+  return (
+    <Modal onClose={onClose} title={item.title} icon={<Icon className="h-6 w-6" />} description={`${item.project} - ${item.time}`}>
+      <div className="space-y-5 p-6">
+        <div className="rounded-xl border border-slate-700 bg-slate-800/60 p-5">
+          <p className="text-sm leading-6 text-slate-200">{item.body}</p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className="rounded-lg border border-slate-700 bg-slate-800/60 p-4"><p className="text-xs text-slate-500">Tone</p><p className="mt-1 font-semibold capitalize text-white">{item.tone}</p></div>
+          <div className="rounded-lg border border-slate-700 bg-slate-800/60 p-4"><p className="text-xs text-slate-500">Project</p><p className="mt-1 font-semibold text-white">{item.project}</p></div>
+          <div className="rounded-lg border border-slate-700 bg-slate-800/60 p-4"><p className="text-xs text-slate-500">Status</p><p className="mt-1 font-semibold text-white">{item.unread ? "Unread" : "Read"}</p></div>
+        </div>
+      </div>
+      <ModalActions onClose={onClose} primary="Mark as handled" />
+    </Modal>
+  );
+}
+
+async function loadLogoAsJpeg(src: string) {
+  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+  const maxWidth = 150;
+  const ratio = Math.min(1, maxWidth / image.width);
+  const width = Math.round(image.width * ratio);
+  const height = Math.round(image.height * ratio);
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Could not prepare invoice logo.");
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, width, height);
+  context.drawImage(image, 0, 0, width, height);
+  const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+  return { bytes: dataUrlToBytes(dataUrl), width, height };
+}
+
+function buildInvoicePdf(invoice: Invoice, logo: { bytes: Uint8Array; width: number; height: number }) {
+  const rows = [
+    ["Subscription plan", "Growth monthly"],
+    ["Billing period", invoice.date],
+    ["Payment method", invoice.method],
+    ["Status", invoice.status],
+  ];
+  const logoWidth = 145;
+  const logoHeight = Math.max(34, (logo.height / logo.width) * logoWidth);
+  const lines = [
+    "q",
+    `${logoWidth} 0 0 ${logoHeight.toFixed(2)} 40 760 cm`,
+    "/Logo Do",
+    "Q",
+    "0.06 0.09 0.16 rg",
+    "40 116 515 72 re f",
+    text("INVOICE", 430, 790, 24, "0.06 0.09 0.16"),
+    text(invoice.id, 430, 764, 12, "0.39 0.45 0.55"),
+    text(`Issued ${invoice.date}`, 430, 746, 10, "0.39 0.45 0.55"),
+    text("Billed to", 40, 690, 13, "0.06 0.09 0.16"),
+    text("PKay Monitoring and Evaluation Agency", 40, 668, 11, "0.06 0.09 0.16"),
+    text("admin@pkaymne.org", 40, 652, 10, "0.39 0.45 0.55"),
+    text("Accra, Ghana", 40, 636, 10, "0.39 0.45 0.55"),
+    text("From", 330, 690, 13, "0.06 0.09 0.16"),
+    text("PKay M&E SaaS", 330, 668, 11, "0.06 0.09 0.16"),
+    text("Monitoring, evaluation, reporting,", 330, 652, 10, "0.39 0.45 0.55"),
+    text("and field data operations.", 330, 636, 10, "0.39 0.45 0.55"),
+    ...rows.flatMap(([label, value], index) => {
+      const y = 570 - index * 42;
+      return [
+        "0.89 0.92 0.96 RG",
+        `40 ${y - 13} 515 0.7 re S`,
+        text(label, 40, y, 10, "0.39 0.45 0.55"),
+        text(value, 390, y, 11, "0.06 0.09 0.16"),
+      ];
+    }),
+    text("Amount paid", 64, 154, 12, "1 1 1"),
+    text(invoice.status, 64, 134, 9, "0.80 0.86 0.94"),
+    text(invoice.amount, 430, 145, 24, "1 1 1"),
+    text("Thank you for using PKay M&E. Keep this invoice for your institution's financial and audit records.", 40, 72, 9, "0.39 0.45 0.55"),
+  ].join("\n");
+
+  return writePdf(lines, logo);
+}
+
+function text(value: string, x: number, y: number, size: number, color: string) {
+  return `${color} rg BT /F1 ${size} Tf ${x} ${y} Td (${escapePdf(value)}) Tj ET`;
+}
+
+function writePdf(content: string, logo: { bytes: Uint8Array; width: number; height: number }) {
+  const encoder = new TextEncoder();
+  const contentBytes = encoder.encode(content);
+  const chunks: Uint8Array[] = [];
+  const offsets: number[] = [];
+  let length = 0;
+  const push = (part: string | Uint8Array) => {
+    const bytes = typeof part === "string" ? encoder.encode(part) : part;
+    chunks.push(bytes);
+    length += bytes.length;
+  };
+  const object = (id: number, body: string | Uint8Array, prefix = "", suffix = "") => {
+    offsets[id] = length;
+    push(`${id} 0 obj\n${prefix}`);
+    push(body);
+    push(`${suffix}\nendobj\n`);
+  };
+
+  push("%PDF-1.4\n");
+  object(1, "<< /Type /Catalog /Pages 2 0 R >>");
+  object(2, "<< /Type /Pages /Kids [3 0 R] /Count 1 >>");
+  object(3, "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> /XObject << /Logo 5 0 R >> >> /Contents 6 0 R >>");
+  object(4, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+  object(5, logo.bytes, `<< /Type /XObject /Subtype /Image /Width ${logo.width} /Height ${logo.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logo.bytes.length} >>\nstream\n`, "\nendstream");
+  object(6, contentBytes, `<< /Length ${contentBytes.length} >>\nstream\n`, "\nendstream");
+  const xrefOffset = length;
+  push(`xref\n0 7\n0000000000 65535 f \n`);
+  for (let id = 1; id <= 6; id += 1) {
+    push(`${String(offsets[id]).padStart(10, "0")} 00000 n \n`);
+  }
+  push(`trailer\n<< /Size 7 /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`);
+  return new Blob(chunks, { type: "application/pdf" });
+}
+
+function dataUrlToBytes(dataUrl: string) {
+  const base64 = dataUrl.split(",")[1] ?? "";
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
+}
+
+function escapePdf(value: string) {
+  return value.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
 }
 
 function Metric({ label, value, icon }: { label: string; value: string | number; icon: React.ReactNode }) {

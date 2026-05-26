@@ -12,13 +12,14 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   TrendingUp,
-  Users,
   X,
 } from "lucide-react";
 import type React from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-location";
 import { SYSTEM } from "@/constants/page-path";
+import { apiRequest, getDemoToken } from "@/lib/api/client";
+import { moneyLabel } from "@/lib/api/mappers";
 
 type Section = "overview" | "packages" | "subscriptions" | "transactions" | "companies";
 type PackageStatus = "Active" | "Draft" | "Retired";
@@ -42,6 +43,50 @@ const companies = [
 
 type PackageItem = (typeof packages)[number];
 type CompanyItem = (typeof companies)[number];
+type SubscriptionItem = (typeof subscriptions)[number];
+type TransactionItem = (typeof transactions)[number];
+type ApiMoney = { amount: number; currency: string };
+type SystemSummaryResponse = {
+  companies_count: number;
+  mrr: ApiMoney;
+  active_subscriptions_count: number;
+  failed_payments_count: number;
+};
+type PackageResponse = {
+  id: number;
+  name: string;
+  price: ApiMoney;
+  billing_cycle: string;
+  limits: { projects?: number; indicators?: number; users?: number; submissions_per_month?: number };
+  status: PackageStatus;
+};
+type CompanyResponse = {
+  id: number;
+  name: string;
+  plan: string;
+  status: CompanyStatus;
+  users_count: number;
+  projects_count: number;
+  country: string;
+  joined_at: string;
+};
+type SubscriptionResponse = {
+  id: number;
+  company: string;
+  plan: string;
+  amount: ApiMoney;
+  status: SubscriptionStatus;
+  renewal: string | null;
+};
+type TransactionResponse = {
+  id: number;
+  company_id: number | null;
+  amount: ApiMoney;
+  method: string;
+  status: TransactionStatus;
+  date: string;
+};
+type PaginatedApiResponse<T> = { items: T[] };
 
 const subscriptions = [
   { id: "SUB-1024", company: "PKay Monitoring and Evaluation Agency", plan: "Growth", amount: "$299", status: "Active" as SubscriptionStatus, renewal: "Dec 31, 2026", seats: "37 / 50" },
@@ -82,16 +127,120 @@ export default function SystemPage() {
   const [packageModalOpen, setPackageModalOpen] = useState(false);
   const [packageForm, setPackageForm] = useState(emptyPackage);
   const [localPackages, setLocalPackages] = useState(packages);
+  const [localCompanies, setLocalCompanies] = useState(companies);
+  const [localSubscriptions, setLocalSubscriptions] = useState<SubscriptionItem[]>(subscriptions);
+  const [localTransactions, setLocalTransactions] = useState<TransactionItem[]>(transactions);
+  const [summary, setSummary] = useState({ companies: companies.length, mrr: "$21.4k", activeSubscriptions: subscriptions.filter((item) => item.status === "Active").length, failedPayments: transactions.filter((item) => item.status === "Failed").length });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedCompany, setSelectedCompany] = useState<CompanyItem | null>(null);
 
   const filteredCompanies = useMemo(() => {
     const needle = query.toLowerCase().trim();
-    return companies.filter((company) => !needle || company.name.toLowerCase().includes(needle) || company.plan.toLowerCase().includes(needle) || company.country.toLowerCase().includes(needle));
-  }, [query]);
+    return localCompanies.filter((company) => !needle || company.name.toLowerCase().includes(needle) || company.plan.toLowerCase().includes(needle) || company.country.toLowerCase().includes(needle));
+  }, [localCompanies, query]);
 
-  const addPackage = () => {
+  useEffect(() => {
+    let cancelled = false;
+    async function loadSystemData() {
+      try {
+        setLoading(true);
+        setError(null);
+        const token = await getDemoToken("super");
+        const [summaryData, packagesData, companiesData, subscriptionsData, transactionsData] = await Promise.all([
+          apiRequest<SystemSummaryResponse>("/system/summary", { token }),
+          apiRequest<PaginatedApiResponse<PackageResponse>>("/system/packages", { token }),
+          apiRequest<PaginatedApiResponse<CompanyResponse>>("/system/companies", { token }),
+          apiRequest<PaginatedApiResponse<SubscriptionResponse>>("/system/subscriptions", { token }),
+          apiRequest<PaginatedApiResponse<TransactionResponse>>("/system/transactions", { token }),
+        ]);
+        if (cancelled) return;
+        setSummary({
+          companies: summaryData.companies_count ?? 0,
+          mrr: moneyLabel(summaryData.mrr),
+          activeSubscriptions: summaryData.active_subscriptions_count ?? 0,
+          failedPayments: summaryData.failed_payments_count ?? 0,
+        });
+        setLocalPackages((packagesData.items ?? []).map((item) => ({
+          id: item.id,
+          name: item.name,
+          price: moneyLabel(item.price),
+          cadence: item.billing_cycle,
+          projects: item.limits?.projects ?? 0,
+          indicators: item.limits?.indicators ?? 0,
+          users: item.limits?.users ?? 0,
+          submissions: String(item.limits?.submissions_per_month ?? "Custom"),
+          status: item.status,
+        })));
+        setLocalCompanies((companiesData.items ?? []).map((item) => ({
+          id: item.id,
+          name: item.name,
+          plan: item.plan,
+          status: item.status,
+          users: item.users_count,
+          projects: item.projects_count,
+          country: item.country,
+          joined: new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(new Date(item.joined_at)),
+        })));
+        setLocalSubscriptions((subscriptionsData.items ?? []).map((item) => ({
+          id: `SUB-${item.id}`,
+          company: item.company,
+          plan: item.plan,
+          amount: moneyLabel(item.amount),
+          status: item.status,
+          renewal: item.renewal ? formatDate(item.renewal) : "Not set",
+          seats: "Live",
+        })));
+        setLocalTransactions((transactionsData.items ?? []).map((item) => ({
+          id: `TXN-${item.id}`,
+          company: item.company_id ? `Company ${item.company_id}` : "Platform",
+          amount: moneyLabel(item.amount),
+          method: item.method,
+          status: item.status,
+          date: formatDate(item.date),
+        })));
+      } catch (caught) {
+        if (!cancelled) setError(caught instanceof Error ? caught.message : "Could not load system data.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    loadSystemData();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const addPackage = async () => {
     if (!packageForm.name.trim()) return;
-    setLocalPackages((items) => [...items, { ...packageForm, id: Math.max(0, ...items.map((item) => item.id)) + 1 }]);
+    const token = await getDemoToken("super");
+    const created = await apiRequest<PackageResponse>("/system/packages", {
+      method: "POST",
+      token,
+      body: JSON.stringify({
+        name: packageForm.name,
+        price: { amount: Number(packageForm.price.replace(/[^0-9.]/g, "")) || 0, currency: "USD" },
+        billing_cycle: packageForm.cadence,
+        status: packageForm.status,
+        limits: {
+          projects: packageForm.projects,
+          indicators: packageForm.indicators,
+          users: packageForm.users,
+          submissions_per_month: Number(packageForm.submissions.replace(/[^0-9]/g, "")) || 0,
+        },
+      }),
+    });
+    setLocalPackages((items) => [...items, {
+      id: created.id,
+      name: created.name,
+      price: moneyLabel(created.price),
+      cadence: created.billing_cycle,
+      projects: created.limits?.projects ?? packageForm.projects,
+      indicators: created.limits?.indicators ?? packageForm.indicators,
+      users: created.limits?.users ?? packageForm.users,
+      submissions: String(created.limits?.submissions_per_month ?? packageForm.submissions),
+      status: created.status,
+    }]);
     setPackageForm(emptyPackage);
     setPackageModalOpen(false);
   };
@@ -118,11 +267,14 @@ export default function SystemPage() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-4">
-          <Metric label="Companies" value={companies.length} icon={<Building2 />} />
-          <Metric label="MRR" value="$21.4k" icon={<TrendingUp />} />
-          <Metric label="Active subscriptions" value={subscriptions.filter((item) => item.status === "Active").length} icon={<CreditCard />} />
-          <Metric label="Failed payments" value={transactions.filter((item) => item.status === "Failed").length} icon={<AlertTriangle />} />
+          <Metric label="Companies" value={summary.companies} icon={<Building2 />} />
+          <Metric label="MRR" value={summary.mrr} icon={<TrendingUp />} />
+          <Metric label="Active subscriptions" value={summary.activeSubscriptions} icon={<CreditCard />} />
+          <Metric label="Failed payments" value={summary.failedPayments} icon={<AlertTriangle />} />
         </div>
+
+        {loading && <div className="rounded-lg border border-gray-700 bg-gray-800 p-4 text-sm text-gray-400">Loading live system data...</div>}
+        {error && <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200">{error}</div>}
 
         <div className="flex flex-wrap gap-2 rounded-lg border border-gray-700 bg-gray-800 p-2">
           {tabs.map((tab) => {
@@ -138,8 +290,8 @@ export default function SystemPage() {
 
         {section === "overview" && <Overview />}
         {section === "packages" && <Packages items={localPackages} onCreate={() => setPackageModalOpen(true)} />}
-        {section === "subscriptions" && <Subscriptions />}
-        {section === "transactions" && <Transactions />}
+        {section === "subscriptions" && <Subscriptions items={localSubscriptions} />}
+        {section === "transactions" && <Transactions items={localTransactions} />}
         {section === "companies" && <Companies query={query} setQuery={setQuery} companies={filteredCompanies} onSelect={setSelectedCompany} />}
       </div>
 
@@ -287,12 +439,12 @@ function Packages({ items, onCreate }: { items: PackageItem[]; onCreate: () => v
   );
 }
 
-function Subscriptions() {
-  return <DataTable title="Subscriptions" columns={["Subscription", "Company", "Plan", "Amount", "Status", "Renewal", "Seats"]} rows={subscriptions.map((item) => [item.id, item.company, item.plan, item.amount, item.status, item.renewal, item.seats])} />;
+function Subscriptions({ items }: { items: SubscriptionItem[] }) {
+  return <DataTable title="Subscriptions" columns={["Subscription", "Company", "Plan", "Amount", "Status", "Renewal", "Seats"]} rows={items.map((item) => [item.id, item.company, item.plan, item.amount, item.status, item.renewal, item.seats])} />;
 }
 
-function Transactions() {
-  return <DataTable title="Transactions" columns={["Transaction", "Company", "Amount", "Method", "Status", "Date"]} rows={transactions.map((item) => [item.id, item.company, item.amount, item.method, item.status, item.date])} />;
+function Transactions({ items }: { items: TransactionItem[] }) {
+  return <DataTable title="Transactions" columns={["Transaction", "Company", "Amount", "Method", "Status", "Date"]} rows={items.map((item) => [item.id, item.company, item.amount, item.method, item.status, item.date])} />;
 }
 
 function Companies({ query, setQuery, companies, onSelect }: { query: string; setQuery: (value: string) => void; companies: CompanyItem[]; onSelect: (company: CompanyItem) => void }) {
@@ -434,4 +586,9 @@ function isStatus(value: string) {
 function getSection(pathname: string): Section {
   const last = pathname.split("/").filter(Boolean).at(-1);
   return last && ["packages", "subscriptions", "transactions", "companies"].includes(last) ? (last as Section) : "overview";
+}
+
+function formatDate(value: string) {
+  if (!value) return "Not set";
+  return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value));
 }

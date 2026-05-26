@@ -1,5 +1,4 @@
 import {
-  Activity,
   AlertCircle,
   ArrowUpRight,
   Bell,
@@ -13,17 +12,10 @@ import {
   FileSpreadsheet,
   Filter,
   KeyRound,
-  Landmark,
-  Lock,
   Mail,
-  Plus,
-  ReceiptText,
-  RefreshCw,
   Search,
-  ShieldCheck,
   SlidersHorizontal,
   Upload,
-  Users,
   X,
 } from "lucide-react";
 import type React from "react";

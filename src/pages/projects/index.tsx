@@ -14,6 +14,7 @@ import {
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-location";
+import { ActionMenu } from "@/components/core/action-menu";
 import { apiRequest, getDemoToken } from "@/lib/api/client";
 import { projectStatusFromApi, projectStatusToApi } from "@/lib/api/mappers";
 
@@ -26,6 +27,7 @@ type Project = {
   outcomes: number;
   indicators: number;
   due: string;
+  budget: number | "";
 };
 
 const initialProjects: Project[] = [
@@ -37,6 +39,7 @@ const initialProjects: Project[] = [
     outcomes: 4,
     indicators: 18,
     due: "2026-12-31",
+    budget: 1250000,
   },
   {
     id: 2,
@@ -46,6 +49,7 @@ const initialProjects: Project[] = [
     outcomes: 3,
     indicators: 12,
     due: "2026-09-30",
+    budget: 640000,
   },
   {
     id: 3,
@@ -55,6 +59,7 @@ const initialProjects: Project[] = [
     outcomes: 5,
     indicators: 24,
     due: "2026-06-15",
+    budget: 890000,
   },
 ];
 
@@ -65,6 +70,7 @@ const emptyForm: Omit<Project, "id"> = {
   outcomes: 1,
   indicators: 1,
   due: "",
+  budget: "",
 };
 
 const statuses: Array<ProjectStatus | "All"> = ["All", "Active", "Planning", "Paused", "Completed"];
@@ -112,6 +118,7 @@ export default function ProjectsPage() {
           status: string;
           department_id: number | null;
           end_date: string | null;
+          budget: number | string | null;
         }>>("/projects", { token });
         const mapped = await Promise.all(
           rows.map(async (project) => {
@@ -127,6 +134,7 @@ export default function ProjectsPage() {
               outcomes: outcomes.length,
               indicators: indicators.length,
               due: project.end_date ?? "",
+              budget: project.budget == null ? ("" as const) : Number(project.budget),
             };
           }),
         );
@@ -158,6 +166,7 @@ export default function ProjectsPage() {
       outcomes: project.outcomes,
       indicators: project.indicators,
       due: project.due,
+      budget: project.budget,
     });
     setModalOpen(true);
   };
@@ -169,14 +178,14 @@ export default function ProjectsPage() {
       await apiRequest(`/projects/${editingProject.id}`, {
         method: "PATCH",
         token,
-        body: JSON.stringify({ name: form.name, status: projectStatusToApi(form.status), end_date: form.due || null }),
+        body: JSON.stringify({ name: form.name, status: projectStatusToApi(form.status), end_date: form.due || null, budget: form.budget || null }),
       });
       setProjects((items) => items.map((item) => (item.id === editingProject.id ? { ...item, ...form } : item)));
     } else {
       const created = await apiRequest<{ id: number }>("/projects", {
         method: "POST",
         token,
-        body: JSON.stringify({ name: form.name, status: projectStatusToApi(form.status), end_date: form.due || null }),
+        body: JSON.stringify({ name: form.name, status: projectStatusToApi(form.status), end_date: form.due || null, budget: form.budget || null }),
       });
       setProjects((items) => [...items, { id: created.id, ...form, outcomes: 0, indicators: 0 }]);
     }
@@ -258,6 +267,7 @@ export default function ProjectsPage() {
                   <th className="p-4 font-medium">Outcomes</th>
                   <th className="p-4 font-medium">Indicators</th>
                   <th className="p-4 font-medium">Review Date</th>
+                  <th className="p-4 font-medium">Budget</th>
                   <th className="p-4 font-medium">Actions</th>
                 </tr>
               </thead>
@@ -278,15 +288,15 @@ export default function ProjectsPage() {
                     <td className="p-4 text-gray-300">{project.outcomes}</td>
                     <td className="p-4 text-gray-300">{project.indicators}</td>
                     <td className="p-4 text-gray-300">{formatDate(project.due)}</td>
+                    <td className="p-4 text-gray-300">{formatBudget(project.budget)}</td>
                     <td className="p-4">
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => openEdit(project)} className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-700 hover:text-blue-300" aria-label={`Edit ${project.name}`}>
-                          <Edit3 className="h-4 w-4" />
-                        </button>
-                        <button onClick={() => deleteProject(project.id)} className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-700 hover:text-red-300" aria-label={`Delete ${project.name}`}>
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
+                      <ActionMenu
+                        label={`Actions for ${project.name}`}
+                        items={[
+                          { label: "Edit project", icon: <Edit3 />, onClick: () => openEdit(project) },
+                          { label: "Delete project", icon: <Trash2 />, tone: "danger", onClick: () => deleteProject(project.id) },
+                        ]}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -346,6 +356,12 @@ export default function ProjectsPage() {
                 <div className="field-shell">
                   <CalendarDays className="h-4 w-4 text-slate-400" />
                   <input value={form.due} onChange={(event) => setForm({ ...form, due: event.target.value })} className="field-input" type="date" />
+                </div>
+              </Field>
+              <Field label="Budget" hint="Optional implementation or programme budget.">
+                <div className="field-shell">
+                  <span className="shrink-0 text-sm font-semibold text-slate-400">GHS</span>
+                  <input value={form.budget} onChange={(event) => setForm({ ...form, budget: event.target.value === "" ? "" : Number(event.target.value) || 0 })} className="field-input" type="number" min={0} placeholder="0.00" />
                 </div>
               </Field>
               <Field label="Outcomes" hint="Computed from outcomes assigned to this project.">
@@ -413,4 +429,9 @@ function statusClass(status: ProjectStatus) {
 function formatDate(value: string) {
   if (!value) return "Not set";
   return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value));
+}
+
+function formatBudget(value: number | "") {
+  if (value === "") return "Not set";
+  return new Intl.NumberFormat("en", { style: "currency", currency: "GHS", maximumFractionDigits: 0 }).format(value);
 }

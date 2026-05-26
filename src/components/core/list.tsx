@@ -1,13 +1,13 @@
-import React, { FC, ReactElement } from 'react';
+import React, { ReactElement } from 'react';
 
-interface ListProps<T = any> {
+interface ListProps<T = unknown> {
   data: T[];
   renderItem: (data: T) => ReactElement;
   renderEmptyComponent?: () => ReactElement;
   selected?: boolean;
 }
 
-const List: FC<ListProps> = ({ data, renderItem, renderEmptyComponent }) => {
+const List = <T,>({ data, renderItem, renderEmptyComponent }: ListProps<T>) => {
   if (!data || data.length === 0) {
     return <div>{renderEmptyComponent ? renderEmptyComponent() : 'N/A'}</div>;
   }

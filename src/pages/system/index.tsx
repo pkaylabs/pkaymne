@@ -17,6 +17,7 @@ import {
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-location";
+import { ActionMenu } from "@/components/core/action-menu";
 import { SYSTEM } from "@/constants/page-path";
 import { apiRequest, getDemoToken } from "@/lib/api/client";
 import { moneyLabel } from "@/lib/api/mappers";
@@ -125,6 +126,8 @@ export default function SystemPage() {
   const section = getSection(useLocation().current.pathname);
   const [query, setQuery] = useState("");
   const [packageModalOpen, setPackageModalOpen] = useState(false);
+  const [packageView, setPackageView] = useState<PackageItem | null>(null);
+  const [editingPackage, setEditingPackage] = useState<PackageItem | null>(null);
   const [packageForm, setPackageForm] = useState(emptyPackage);
   const [localPackages, setLocalPackages] = useState(packages);
   const [localCompanies, setLocalCompanies] = useState(companies);
@@ -211,37 +214,61 @@ export default function SystemPage() {
     };
   }, []);
 
-  const addPackage = async () => {
+  const openCreatePackage = () => {
+    setEditingPackage(null);
+    setPackageForm(emptyPackage);
+    setPackageModalOpen(true);
+  };
+
+  const openEditPackage = (item: PackageItem) => {
+    setEditingPackage(item);
+    setPackageForm({
+      name: item.name,
+      price: item.price,
+      cadence: item.cadence,
+      projects: item.projects,
+      indicators: item.indicators,
+      users: item.users,
+      submissions: String(item.submissions),
+      status: item.status,
+    });
+    setPackageModalOpen(true);
+  };
+
+  const savePackage = async () => {
     if (!packageForm.name.trim()) return;
     const token = await getDemoToken("super");
-    const created = await apiRequest<PackageResponse>("/system/packages", {
-      method: "POST",
+    const payload = {
+      name: packageForm.name,
+      price: { amount: Number(packageForm.price.replace(/[^0-9.]/g, "")) || 0, currency: "USD" },
+      billing_cycle: packageForm.cadence,
+      status: packageForm.status,
+      limits: {
+        projects: packageForm.projects,
+        indicators: packageForm.indicators,
+        users: packageForm.users,
+        submissions_per_month: Number(packageForm.submissions.replace(/[^0-9]/g, "")) || 0,
+      },
+    };
+    const saved = await apiRequest<PackageResponse>(editingPackage ? `/system/packages/${editingPackage.id}` : "/system/packages", {
+      method: editingPackage ? "PATCH" : "POST",
       token,
-      body: JSON.stringify({
-        name: packageForm.name,
-        price: { amount: Number(packageForm.price.replace(/[^0-9.]/g, "")) || 0, currency: "USD" },
-        billing_cycle: packageForm.cadence,
-        status: packageForm.status,
-        limits: {
-          projects: packageForm.projects,
-          indicators: packageForm.indicators,
-          users: packageForm.users,
-          submissions_per_month: Number(packageForm.submissions.replace(/[^0-9]/g, "")) || 0,
-        },
-      }),
+      body: JSON.stringify(payload),
     });
-    setLocalPackages((items) => [...items, {
-      id: created.id,
-      name: created.name,
-      price: moneyLabel(created.price),
-      cadence: created.billing_cycle,
-      projects: created.limits?.projects ?? packageForm.projects,
-      indicators: created.limits?.indicators ?? packageForm.indicators,
-      users: created.limits?.users ?? packageForm.users,
-      submissions: String(created.limits?.submissions_per_month ?? packageForm.submissions),
-      status: created.status,
-    }]);
+    const mapped = {
+      id: saved.id,
+      name: saved.name,
+      price: moneyLabel(saved.price),
+      cadence: saved.billing_cycle,
+      projects: saved.limits?.projects ?? packageForm.projects,
+      indicators: saved.limits?.indicators ?? packageForm.indicators,
+      users: saved.limits?.users ?? packageForm.users,
+      submissions: String(saved.limits?.submissions_per_month ?? packageForm.submissions),
+      status: saved.status,
+    };
+    setLocalPackages((items) => editingPackage ? items.map((item) => item.id === editingPackage.id ? mapped : item) : [...items, mapped]);
     setPackageForm(emptyPackage);
+    setEditingPackage(null);
     setPackageModalOpen(false);
   };
 
@@ -259,7 +286,7 @@ export default function SystemPage() {
               <Download className="h-4 w-4" />
               Export
             </button>
-            <button onClick={() => setPackageModalOpen(true)} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">
+            <button onClick={openCreatePackage} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">
               <Plus className="h-4 w-4" />
               New Package
             </button>
@@ -289,7 +316,7 @@ export default function SystemPage() {
         </div>
 
         {section === "overview" && <Overview />}
-        {section === "packages" && <Packages items={localPackages} onCreate={() => setPackageModalOpen(true)} />}
+        {section === "packages" && <Packages items={localPackages} onCreate={openCreatePackage} onEdit={openEditPackage} onView={setPackageView} />}
         {section === "subscriptions" && <Subscriptions items={localSubscriptions} />}
         {section === "transactions" && <Transactions items={localTransactions} />}
         {section === "companies" && <Companies query={query} setQuery={setQuery} companies={filteredCompanies} onSelect={setSelectedCompany} />}
@@ -306,7 +333,7 @@ export default function SystemPage() {
                   <Package className="h-6 w-6" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-semibold tracking-tight">Create subscription package</h2>
+                  <h2 className="text-2xl font-semibold tracking-tight">{editingPackage ? "Edit subscription package" : "Create subscription package"}</h2>
                   <p className="mt-1 text-sm text-slate-400">Define commercial limits that companies can subscribe to.</p>
                 </div>
               </div>
@@ -350,11 +377,12 @@ export default function SystemPage() {
             </div>
             <div className="flex justify-end gap-3 border-t border-slate-700 bg-slate-950/45 px-6 py-5">
               <button onClick={() => setPackageModalOpen(false)} className="rounded-xl border border-slate-600 px-5 py-2.5 text-sm font-semibold text-slate-200 transition hover:bg-slate-800">Cancel</button>
-              <button onClick={addPackage} className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500">Create Package</button>
+              <button onClick={savePackage} className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500">{editingPackage ? "Save Package" : "Create Package"}</button>
             </div>
           </div>
         </div>
       )}
+      {packageView && <PackageDetailModal item={packageView} onClose={() => setPackageView(null)} onEdit={(item) => { setPackageView(null); openEditPackage(item); }} />}
     </div>
   );
 }
@@ -405,7 +433,7 @@ function Overview() {
   );
 }
 
-function Packages({ items, onCreate }: { items: PackageItem[]; onCreate: () => void }) {
+function Packages({ items, onCreate, onView, onEdit }: { items: PackageItem[]; onCreate: () => void; onView: (item: PackageItem) => void; onEdit: (item: PackageItem) => void }) {
   return (
     <section className="rounded-lg border border-gray-700 bg-gray-800">
       <div className="flex items-center justify-between border-b border-gray-700 p-5">
@@ -428,14 +456,50 @@ function Packages({ items, onCreate }: { items: PackageItem[]; onCreate: () => v
               <Limit label="Users" value={item.users} />
               <Limit label="Submissions" value={item.submissions} />
             </div>
-            <div className="mt-5 flex justify-end gap-2">
-              <button className="rounded-lg border border-gray-700 p-2 text-gray-300 transition hover:bg-gray-700" aria-label={`View ${item.name}`}><Eye className="h-4 w-4" /></button>
-              <button className="rounded-lg border border-gray-700 p-2 text-gray-300 transition hover:bg-gray-700" aria-label={`Edit ${item.name}`}><Edit3 className="h-4 w-4" /></button>
+            <div className="mt-5 flex justify-end">
+              <ActionMenu
+                label={`Actions for ${item.name}`}
+                items={[
+                  { label: "View package", icon: <Eye />, onClick: () => onView(item) },
+                  { label: "Edit package", icon: <Edit3 />, onClick: () => onEdit(item) },
+                ]}
+              />
             </div>
           </div>
         ))}
       </div>
     </section>
+  );
+}
+
+function PackageDetailModal({ item, onClose, onEdit }: { item: PackageItem; onClose: () => void; onEdit: (item: PackageItem) => void }) {
+  return (
+    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div onClick={(event) => event.stopPropagation()} className="w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 text-white shadow-2xl shadow-black/40">
+        <div className="flex items-start justify-between border-b border-slate-700 px-6 py-5">
+          <div className="flex gap-4">
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-blue-500/15 text-blue-300"><Package className="h-6 w-6" /></div>
+            <div>
+              <h2 className="text-2xl font-semibold tracking-tight">{item.name}</h2>
+              <p className="mt-1 text-sm text-slate-400">{item.price} / {item.cadence}. Commercial limits for subscribed institutions.</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-white" aria-label="Close package details"><X className="h-5 w-5" /></button>
+        </div>
+        <div className="grid gap-4 p-6 sm:grid-cols-2">
+          <Limit label="Status" value={item.status} />
+          <Limit label="Billing cadence" value={item.cadence} />
+          <Limit label="Project limit" value={item.projects} />
+          <Limit label="Indicator limit" value={item.indicators} />
+          <Limit label="User limit" value={item.users} />
+          <Limit label="Submissions / month" value={item.submissions} />
+        </div>
+        <div className="flex justify-end gap-3 border-t border-slate-700 bg-slate-950/45 px-6 py-5">
+          <button onClick={onClose} className="rounded-xl border border-slate-600 px-5 py-2.5 text-sm font-semibold text-slate-200 transition hover:bg-slate-800">Close</button>
+          <button onClick={() => onEdit(item)} className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500">Edit Package</button>
+        </div>
+      </div>
+    </div>
   );
 }
 

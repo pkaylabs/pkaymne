@@ -22,27 +22,26 @@ import {
 import { classNames, wrapClick } from '@/utils';
 import 'react-tooltip/dist/react-tooltip.css';
 
-const Actions = [
-  'update',
-  'view',
-  'configure',
-  'calculate',
-  'assign',
-  'schedule',
-  'send',
-  'resolve',
-  'approve',
-  'reject',
-  'reassign',
-  'expand',
-  'goto',
-  'clone',
-  'investigate',
-  'remove',
-  'close',
-  'assignPercentage',
-] as const;
-export type Action = (typeof Actions)[number];
+export type Action =
+  | 'update'
+  | 'view'
+  | 'configure'
+  | 'calculate'
+  | 'assign'
+  | 'schedule'
+  | 'send'
+  | 'resolve'
+  | 'approve'
+  | 'reject'
+  | 'reassign'
+  | 'expand'
+  | 'goto'
+  | 'clone'
+  | 'investigate'
+  | 'remove'
+  | 'close'
+  | 'assignPercentage';
+
 const ActionIcons: { [key in Action]: typeof EyeIcon } = {
   approve: ClipboardDocumentCheckIcon,
   assign: UserPlusIcon,
@@ -66,7 +65,7 @@ const ActionIcons: { [key in Action]: typeof EyeIcon } = {
 
 interface ActionButtonProps {
   action: Action;
-  onClick: (...val: any) => any;
+  onClick: (...val: unknown[]) => unknown;
   disabled?: boolean;
   tooltip?: string;
 }

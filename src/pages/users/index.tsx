@@ -13,7 +13,10 @@ import {
   X,
 } from "lucide-react";
 import type React from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+import { ActionMenu } from "@/components/core/action-menu";
+import { apiRequest, getDemoToken } from "@/lib/api/client";
 
 type UserRole = "Owner" | "Admin" | "M&E Manager" | "Project Manager" | "Field Supervisor" | "Field Agent" | "Viewer";
 type UserStatus = "Active" | "Invited" | "Suspended";
@@ -28,7 +31,7 @@ type WorkspaceUser = {
   lastActive: string;
 };
 
-const initialUsers: WorkspaceUser[] = [
+const fallbackUsers: WorkspaceUser[] = [
   { id: 1, name: "Kojo Otoo", email: "kojo.otoo@pkaymne.org", role: "Owner", status: "Active", projects: ["All projects"], lastActive: "Today, 09:30" },
   { id: 2, name: "Ama Boateng", email: "ama.boateng@pkaymne.org", role: "M&E Manager", status: "Active", projects: ["Industrial Transformation", "Youth Employment"], lastActive: "Today, 08:10" },
   { id: 3, name: "Daniel Mensah", email: "daniel.mensah@pkaymne.org", role: "Field Supervisor", status: "Active", projects: ["District Service Delivery"], lastActive: "Yesterday, 17:45" },
@@ -56,12 +59,35 @@ const emptyInvite = {
 };
 
 export default function UsersPage() {
-  const [users, setUsers] = useState(initialUsers);
+  const [users, setUsers] = useState<WorkspaceUser[]>(fallbackUsers);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<UserStatus | "All">("All");
   const [roleFilter, setRoleFilter] = useState<UserRole | "All">("All");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [invite, setInvite] = useState(emptyInvite);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    async function loadUsers() {
+      setIsLoading(true);
+      setError("");
+      try {
+        const token = await getDemoToken();
+        const rows = await apiRequest<ApiUser[]>("/users", { token });
+        if (active) setUsers(rows.map((row) => mapApiUser(row)));
+      } catch (err) {
+        if (active) setError(err instanceof Error ? err.message : "Unable to load users.");
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    }
+    void loadUsers();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const filteredUsers = useMemo(() => {
     const needle = query.toLowerCase().trim();
@@ -82,22 +108,39 @@ export default function UsersPage() {
     };
   }, [users]);
 
-  const inviteUser = () => {
+  const inviteUser = async () => {
     if (!invite.name.trim() || !invite.email.trim()) return;
-    setUsers((items) => [
-      ...items,
-      {
-        id: Math.max(0, ...items.map((item) => item.id)) + 1,
-        name: invite.name,
-        email: invite.email,
-        role: invite.role,
-        status: "Invited",
-        projects: [invite.projects],
-        lastActive: "Invite pending",
-      },
-    ]);
-    setInvite(emptyInvite);
-    setInviteOpen(false);
+    setError("");
+    try {
+      const token = await getDemoToken();
+      const response = await apiRequest<{ user: ApiUser }>("/users/invite", {
+        method: "POST",
+        token,
+        body: JSON.stringify({
+          name: invite.name,
+          email: invite.email,
+          role: invite.role,
+        }),
+      });
+      setUsers((items) => [...items, mapApiUser(response.user, invite.projects)]);
+      setInvite(emptyInvite);
+      setInviteOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to invite user.");
+    }
+  };
+
+  const removeUser = async (userId: number) => {
+    setError("");
+    const previous = users;
+    setUsers((items) => items.filter((item) => item.id !== userId));
+    try {
+      const token = await getDemoToken();
+      await apiRequest(`/users/${userId}`, { method: "DELETE", token });
+    } catch (err) {
+      setUsers(previous);
+      setError(err instanceof Error ? err.message : "Unable to remove user.");
+    }
   };
 
   return (
@@ -123,6 +166,7 @@ export default function UsersPage() {
 
         <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
           <section className="rounded-lg border border-gray-700 bg-gray-800">
+            {error && <div className="border-b border-red-500/30 bg-red-500/10 px-5 py-3 text-sm text-red-200">{error}</div>}
             <div className="grid gap-3 border-b border-gray-700 p-5 lg:grid-cols-[1fr_180px_200px]">
               <label className="relative block">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -172,20 +216,20 @@ export default function UsersPage() {
                       </td>
                       <td className="px-3 py-4 text-gray-400">{user.lastActive}</td>
                       <td className="px-3 py-4">
-                        <div className="flex items-center gap-1">
-                          <button className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-700 hover:text-blue-300" aria-label={`Edit ${user.name}`}>
-                            <Edit3 className="h-4 w-4" />
-                          </button>
-                          <button onClick={() => setUsers((items) => items.filter((item) => item.id !== user.id))} className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-700 hover:text-red-300" aria-label={`Remove ${user.name}`}>
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
+                        <ActionMenu
+                          label={`Actions for ${user.name}`}
+                          items={[
+                            { label: "Edit user", icon: <Edit3 />, onClick: () => undefined },
+                            { label: "Remove user", icon: <Trash2 />, tone: "danger", onClick: () => removeUser(user.id) },
+                          ]}
+                        />
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              {filteredUsers.length === 0 && <div className="p-10 text-center text-gray-400">No users match your filters.</div>}
+              {isLoading && <div className="p-10 text-center text-gray-400">Loading workspace users...</div>}
+              {!isLoading && filteredUsers.length === 0 && <div className="p-10 text-center text-gray-400">No users match your filters.</div>}
             </div>
           </section>
 
@@ -287,6 +331,39 @@ function StatCard({ label, value, icon }: { label: string; value: string | numbe
 
 function initials(name: string) {
   return name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+}
+
+type ApiUser = {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+};
+
+function mapApiUser(user: ApiUser, project = "All projects"): WorkspaceUser {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: roleLabel(user.role),
+    status: user.is_active ? "Active" : "Invited",
+    projects: [project],
+    lastActive: user.updated_at ? new Date(user.updated_at).toLocaleDateString() : "Recently",
+  };
+}
+
+function roleLabel(role: string): UserRole {
+  const map: Record<string, UserRole> = {
+    platform_admin: "Owner",
+    organization_admin: "Admin",
+    manager: "M&E Manager",
+    analyst: "Viewer",
+    field_agent: "Field Agent",
+  };
+  return map[role] ?? "Viewer";
 }
 
 function statusClass(status: UserStatus) {

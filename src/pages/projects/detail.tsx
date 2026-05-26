@@ -1,4 +1,5 @@
 import { EmptyState, ErrorState, LoadingState, PermissionState, StateBand } from "@/components/core/state-views";
+import { ActionMenu } from "@/components/core/action-menu";
 import { INDICATORS, OBJECTIVES, PROJECTS, REPORTS } from "@/constants/page-path";
 import {
   BarChart3,
@@ -80,6 +81,7 @@ const project = {
   completion: 68,
   districts: 14,
   submissions: 918,
+  budget: 1250000,
 };
 
 const projectOutcomes = [
@@ -353,14 +355,15 @@ export default function ProjectDetailPage() {
 
 function OverviewSection() {
   return (
-    <div className="grid gap-6 xl:grid-cols-[1fr_0.8fr]">
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px] 2xl:grid-cols-[minmax(0,1fr)_380px]">
       <section className="rounded-lg border border-gray-700 bg-gray-800 p-6">
         <h2 className="text-lg font-semibold text-white">Project overview</h2>
-        <div className="mt-6 grid gap-4 md:grid-cols-4">
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
           <Metric label="Status" value={project.status} icon={<CheckCircle2 />} />
           <Metric label="Completion" value={`${project.completion}%`} icon={<Gauge />} />
           <Metric label="Districts" value={project.districts} icon={<Users />} />
           <Metric label="Submissions" value={project.submissions} icon={<ClipboardCheck />} />
+          <Metric label="Budget" value={formatCurrency(project.budget)} icon={<Calculator />} />
         </div>
         <div className="mt-6 rounded-lg border border-gray-700 bg-gray-900/45 p-5">
           <div className="flex items-center justify-between text-sm">
@@ -372,12 +375,12 @@ function OverviewSection() {
           </div>
         </div>
       </section>
-      <section className="rounded-lg border border-gray-700 bg-gray-800 p-6">
-        <h2 className="text-lg font-semibold text-white">Upcoming work</h2>
-        <div className="mt-5 space-y-4">
+      <section className="rounded-lg border border-gray-700 bg-gray-800 p-5">
+        <h2 className="text-base font-semibold text-white">Upcoming work</h2>
+        <div className="mt-4 space-y-3">
           {["Publish revised field form", "Review 12 pending submissions", "Generate donor brief", "Recompute indicator summary"].map((item) => (
-            <div key={item} className="flex items-center gap-3 rounded-lg border border-gray-700 bg-gray-900/45 p-3 text-sm text-gray-300">
-              <CalendarDays className="h-4 w-4 text-blue-300" />
+            <div key={item} className="flex items-center gap-2 rounded-lg border border-gray-700 bg-gray-900/45 px-3 py-2.5 text-xs font-medium leading-5 text-gray-300">
+              <CalendarDays className="h-3.5 w-3.5 shrink-0 text-blue-300" />
               {item}
             </div>
           ))}
@@ -824,15 +827,16 @@ function FormsSection({
                         {field.indicator && <p className="mt-2 text-xs text-blue-300">Mapped to {field.indicator}</p>}
                       </div>
                     </div>
-                    <div className="flex shrink-0 flex-wrap items-center gap-1">
-                      <button onClick={(event) => { event.stopPropagation(); onMove(field.id, -1); }} className="rounded-lg px-2 py-1 text-xs font-semibold text-gray-400 transition hover:bg-gray-700 hover:text-white">Up</button>
-                      <button onClick={(event) => { event.stopPropagation(); onMove(field.id, 1); }} className="rounded-lg px-2 py-1 text-xs font-semibold text-gray-400 transition hover:bg-gray-700 hover:text-white">Down</button>
-                      <button onClick={(event) => { event.stopPropagation(); onDuplicate(field); }} className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-700 hover:text-blue-300" aria-label={`Duplicate ${field.label}`}>
-                        <Copy className="h-4 w-4" />
-                      </button>
-                      <button onClick={(event) => { event.stopPropagation(); onRemove(field.id); }} className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-700 hover:text-red-300" aria-label={`Remove ${field.label}`}>
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                    <div onClick={(event) => event.stopPropagation()} className="flex shrink-0 justify-end">
+                      <ActionMenu
+                        label={`Actions for ${field.label}`}
+                        items={[
+                          { label: "Move up", icon: <GripVertical />, onClick: () => onMove(field.id, -1) },
+                          { label: "Move down", icon: <GripVertical />, onClick: () => onMove(field.id, 1) },
+                          { label: "Duplicate field", icon: <Copy />, onClick: () => onDuplicate(field) },
+                          { label: "Remove field", icon: <Trash2 />, tone: "danger", onClick: () => onRemove(field.id) },
+                        ]}
+                      />
                     </div>
                   </div>
                 </div>
@@ -992,9 +996,12 @@ function SubmissionsSection({ status, onStatusChange, submissions }: { status: S
                   <td className="p-3">{date}</td>
                   <td className="p-3">{currentStatus}</td>
                   <td className="p-3">
-                    <button onClick={() => setSelectedSubmission(submission)} className="rounded-lg p-2 text-blue-300 transition hover:bg-gray-700" aria-label={`Review ${id}`}>
-                      <Eye className="h-4 w-4" />
-                    </button>
+                    <ActionMenu
+                      label={`Actions for ${id}`}
+                      items={[
+                        { label: "Review submission", icon: <Eye />, onClick: () => setSelectedSubmission(submission) },
+                      ]}
+                    />
                   </td>
                 </tr>
               );
@@ -1104,12 +1111,12 @@ function SectionCard({ title, children, actionHref, actionLabel, onAction }: { t
 
 function Metric({ label, value, icon }: { label: string; value: string | number; icon: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-gray-700 bg-gray-900/45 p-4">
+    <div className="min-w-0 rounded-lg border border-gray-700 bg-gray-900/45 p-4">
       <div className="flex items-center justify-between text-gray-400">
         <span className="text-sm">{label}</span>
         <span className="text-blue-300 [&_svg]:h-5 [&_svg]:w-5">{icon}</span>
       </div>
-      <p className="mt-3 text-2xl font-semibold text-white">{value}</p>
+      <p className="mt-3 break-words text-xl font-semibold text-white 2xl:text-2xl">{value}</p>
     </div>
   );
 }
@@ -1117,4 +1124,8 @@ function Metric({ label, value, icon }: { label: string; value: string | number;
 function getSection(pathname: string): Section {
   const last = pathname.split("/").filter(Boolean).at(-1);
   return last && ["outcomes", "indicators", "forms", "submissions", "reports"].includes(last) ? (last as Section) : "overview";
+}
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("en", { notation: "compact", style: "currency", currency: "GHS", maximumFractionDigits: 2 }).format(value);
 }

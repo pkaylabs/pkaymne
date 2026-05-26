@@ -18,7 +18,9 @@ import {
   Target,
 } from "lucide-react";
 import type React from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+import { apiRequest, getDemoToken } from "@/lib/api/client";
 
 type IndicatorStatus = "On Track" | "At Risk" | "Off Track" | "Achieved";
 type ReportTemplate = "Executive Summary" | "Indicator Performance" | "Field Collection" | "Donor Brief";
@@ -102,11 +104,14 @@ const indicators: IndicatorData[] = [
   },
 ];
 
-const savedReports = [
-  ["Q1 Programme Performance Pack", "Executive Summary", "May 18, 2026", "Ready"],
-  ["Manufacturing Indicator Review", "Indicator Performance", "May 12, 2026", "Ready"],
-  ["District Field Collection Audit", "Field Collection", "Apr 29, 2026", "Draft"],
-];
+type SavedReport = {
+  id: number;
+  title: string;
+  template: string;
+  generated: string;
+  status: string;
+  download_url: string | null;
+};
 
 export default function ReportsPage() {
   const [template, setTemplate] = useState<ReportTemplate>("Executive Summary");
@@ -114,6 +119,26 @@ export default function ReportsPage() {
   const [department, setDepartment] = useState("All");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generated, setGenerated] = useState(true);
+  const [savedReports, setSavedReports] = useState<SavedReport[]>([]);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    async function loadReports() {
+      setError("");
+      try {
+        const token = await getDemoToken();
+        const response = await apiRequest<{ items: ApiReport[] }>("/reports", { token });
+        if (active) setSavedReports(response.items.map(mapReport));
+      } catch (err) {
+        if (active) setError(err instanceof Error ? err.message : "Unable to load reports.");
+      }
+    }
+    void loadReports();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const filtered = useMemo(() => {
     return indicators.filter((indicator) => {
@@ -141,9 +166,31 @@ export default function ReportsPage() {
   const generateReport = async () => {
     setIsGenerating(true);
     setGenerated(false);
-    await new Promise((resolve) => setTimeout(resolve, 1200));
-    setIsGenerating(false);
-    setGenerated(true);
+    setError("");
+    try {
+      const token = await getDemoToken();
+      const response = await apiRequest<{ report: ApiReport }>("/reports", {
+        method: "POST",
+        token,
+        body: JSON.stringify({
+          title: `${template} - ${new Date().toLocaleDateString()}`,
+          template,
+          status: "Ready",
+          filters: {
+            status,
+            department,
+            date_range: { start: "2026-01-01", end: "2026-05-24" },
+          },
+        }),
+      });
+      await apiRequest(`/reports/${response.report.id}/export`, { method: "POST", token });
+      setSavedReports((items) => [mapReport({ ...response.report, status: "Ready", download_url: `/api/v1/reports/${response.report.id}/download` }), ...items]);
+      setGenerated(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to generate report.");
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const exportReport = () => {
@@ -163,6 +210,29 @@ export default function ReportsPage() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  };
+
+  const downloadSavedReport = async (report: SavedReport) => {
+    if (!report.download_url) return;
+    setError("");
+    try {
+      const token = await getDemoToken();
+      const response = await fetch(`http://127.0.0.1:8000${report.download_url}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error("Unable to download report.");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `pkay-mne-report-${report.id}.txt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to download report.");
+    }
   };
 
   return (
@@ -194,6 +264,7 @@ export default function ReportsPage() {
             </button>
           </div>
         </div>
+        {error && <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">{error}</div>}
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <MetricCard title="Indicators in report" value={stats.total} icon={<Target />} tone="blue" />
@@ -317,16 +388,16 @@ export default function ReportsPage() {
                 </tr>
               </thead>
               <tbody>
-                {savedReports.map(([name, type, date, reportStatus]) => (
-                  <tr key={name} className="border-b border-gray-700 text-gray-300 last:border-0">
-                    <td className="p-4 font-medium text-white">{name}</td>
-                    <td className="p-4">{type}</td>
-                    <td className="p-4">{date}</td>
+                {savedReports.map((report) => (
+                  <tr key={report.id} className="border-b border-gray-700 text-gray-300 last:border-0">
+                    <td className="p-4 font-medium text-white">{report.title}</td>
+                    <td className="p-4">{report.template}</td>
+                    <td className="p-4">{report.generated}</td>
                     <td className="p-4">
-                      <span className="rounded-full bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-200">{reportStatus}</span>
+                      <span className="rounded-full bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-200">{report.status}</span>
                     </td>
                     <td className="p-4">
-                      <button className="inline-flex items-center gap-2 rounded-lg border border-gray-600 px-3 py-2 text-xs font-medium text-gray-200 transition hover:bg-gray-700">
+                      <button onClick={() => downloadSavedReport(report)} disabled={!report.download_url} className="inline-flex items-center gap-2 rounded-lg border border-gray-600 px-3 py-2 text-xs font-medium text-gray-200 transition hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50">
                         <Download className="h-4 w-4" />
                         Download
                       </button>
@@ -335,11 +406,32 @@ export default function ReportsPage() {
                 ))}
               </tbody>
             </table>
+            {savedReports.length === 0 && <div className="p-10 text-center text-gray-400">No reports yet. Generate the first portfolio report above.</div>}
           </div>
         </section>
       </div>
     </div>
   );
+}
+
+type ApiReport = {
+  id: number;
+  title: string;
+  template?: string;
+  status: string;
+  created_at: string;
+  download_url: string | null;
+};
+
+function mapReport(report: ApiReport): SavedReport {
+  return {
+    id: report.id,
+    title: report.title,
+    template: report.template || "Executive Summary",
+    generated: new Date(report.created_at).toLocaleDateString(),
+    status: report.status,
+    download_url: report.download_url,
+  };
 }
 
 function MetricCard({ title, value, icon, tone }: { title: string; value: string | number; icon: React.ReactNode; tone: "blue" | "green" | "amber" | "purple" }) {

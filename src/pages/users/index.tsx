@@ -1,11 +1,9 @@
 import {
   Activity,
-  CheckCircle2,
   Clock,
   Edit3,
   KeyRound,
   Mail,
-  Plus,
   Search,
   ShieldCheck,
   Trash2,

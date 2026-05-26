@@ -8,7 +8,6 @@ import {
   Download,
   FileKey2,
   Globe2,
-  KeyRound,
   Link2,
   Lock,
   Mail,

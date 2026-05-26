@@ -3,6 +3,7 @@ import {
   BarChart3,
   CheckCircle2,
   Edit3,
+  Eye,
   LineChart,
   Plus,
   Search,
@@ -14,6 +15,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useMemo, useState } from "react";
+import { ActionMenu } from "@/components/core/action-menu";
 
 type IndicatorStatus = "On Track" | "At Risk" | "Off Track" | "Achieved";
 
@@ -114,6 +116,7 @@ export default function IndicatorsPage() {
   const [departmentFilter, setDepartmentFilter] = useState("All");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingIndicator, setEditingIndicator] = useState<Indicator | null>(null);
+  const [selectedIndicator, setSelectedIndicator] = useState<Indicator | null>(null);
   const [form, setForm] = useState<IndicatorForm>(emptyForm);
 
   const departments = useMemo(() => Array.from(new Set(indicators.map((indicator) => indicator.department))), [indicators]);
@@ -239,7 +242,7 @@ export default function IndicatorsPage() {
                   <th className="w-[18%] px-3 py-3 font-semibold">Performance</th>
                   <th className="w-[13%] px-3 py-3 font-semibold">Owner</th>
                   <th className="w-[10%] px-3 py-3 font-semibold">Updated</th>
-                  <th className="w-[72px] px-3 py-3 font-semibold">Actions</th>
+                  <th className="w-[96px] px-3 py-3 font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-700">
@@ -283,14 +286,14 @@ export default function IndicatorsPage() {
                       </td>
                       <td className="px-3 py-4 text-gray-300">{formatDate(indicator.updatedAt)}</td>
                       <td className="px-3 py-4">
-                        <div className="flex items-center gap-1">
-                          <button onClick={() => openEdit(indicator)} className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-700 hover:text-blue-300" aria-label={`Edit ${indicator.name}`}>
-                            <Edit3 className="h-4 w-4" />
-                          </button>
-                          <button onClick={() => deleteIndicator(indicator.id)} className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-700 hover:text-red-300" aria-label={`Delete ${indicator.name}`}>
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
+                        <ActionMenu
+                          label={`Actions for ${indicator.name}`}
+                          items={[
+                            { label: "View details", icon: <Eye />, onClick: () => setSelectedIndicator(indicator) },
+                            { label: "Edit indicator", icon: <Edit3 />, onClick: () => openEdit(indicator) },
+                            { label: "Delete indicator", icon: <Trash2 />, tone: "danger", onClick: () => deleteIndicator(indicator.id) },
+                          ]}
+                        />
                       </td>
                     </tr>
                   );
@@ -304,7 +307,7 @@ export default function IndicatorsPage() {
 
       {modalOpen && (
         <div onClick={() => setModalOpen(false)} className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div onClick={(event) => event.stopPropagation()} className="w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 text-white shadow-2xl shadow-black/40">
+          <div onClick={(event) => event.stopPropagation()} className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 text-white shadow-2xl shadow-black/40">
             <div className="flex items-start justify-between border-b border-slate-700 px-6 py-5">
               <div className="flex gap-4">
                 <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-blue-500/15 text-blue-300">
@@ -319,7 +322,7 @@ export default function IndicatorsPage() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="grid gap-5 px-6 py-6 sm:grid-cols-2">
+            <div className="grid gap-5 overflow-y-auto px-6 py-6 sm:grid-cols-2">
               <Field label="Indicator name" className="sm:col-span-2">
                 <input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} className="input-dark h-11" placeholder="Youth employment rate" />
               </Field>
@@ -355,8 +358,62 @@ export default function IndicatorsPage() {
           </div>
         </div>
       )}
+      {selectedIndicator && <IndicatorDetailModal indicator={selectedIndicator} onClose={() => setSelectedIndicator(null)} onEdit={(indicator) => { setSelectedIndicator(null); openEdit(indicator); }} />}
     </div>
   );
+}
+
+function IndicatorDetailModal({ indicator, onClose, onEdit }: { indicator: Indicator; onClose: () => void; onEdit: (indicator: Indicator) => void }) {
+  const progress = calculateProgress(indicator.baseline, indicator.target, indicator.current);
+  return (
+    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div onClick={(event) => event.stopPropagation()} className="w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 text-white shadow-2xl shadow-black/40">
+        <div className="flex items-start justify-between border-b border-slate-700 px-6 py-5">
+          <div className="flex gap-4">
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-blue-500/15 text-blue-300"><LineChart className="h-6 w-6" /></div>
+            <div>
+              <h2 className="text-2xl font-semibold tracking-tight">{indicator.name}</h2>
+              <p className="mt-1 text-sm text-slate-400">{indicator.outcome}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-white" aria-label="Close indicator details"><X className="h-5 w-5" /></button>
+        </div>
+        <div className="grid gap-5 p-6 lg:grid-cols-[1fr_260px]">
+          <div className="space-y-5">
+            <div className="rounded-xl border border-slate-700 bg-slate-800/60 p-5">
+              <p className="text-sm leading-6 text-slate-300">{indicator.description}</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <DetailMetric label="Baseline" value={`${indicator.baseline} ${indicator.unit}`} />
+              <DetailMetric label="Target" value={`${indicator.target} ${indicator.unit}`} />
+              <DetailMetric label="Current" value={`${indicator.current} ${indicator.unit}`} />
+            </div>
+            <div className="rounded-xl border border-slate-700 bg-slate-800/60 p-5">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-400">Progress to target</span>
+                <span className="font-semibold text-white">{progress}%</span>
+              </div>
+              <div className="mt-3 h-3 rounded-full bg-slate-700"><div className={`h-3 rounded-full ${progressColor(progress)}`} style={{ width: `${Math.min(progress, 100)}%` }} /></div>
+            </div>
+          </div>
+          <aside className="space-y-3">
+            <DetailMetric label="Status" value={indicator.status} />
+            <DetailMetric label="Owner" value={indicator.owner} />
+            <DetailMetric label="Department" value={indicator.department} />
+            <DetailMetric label="Last updated" value={formatDate(indicator.updatedAt)} />
+          </aside>
+        </div>
+        <div className="flex justify-end gap-3 border-t border-slate-700 bg-slate-950/45 px-6 py-5">
+          <button onClick={onClose} className="rounded-xl border border-slate-600 px-5 py-2.5 text-sm font-semibold text-slate-200 transition hover:bg-slate-800">Close</button>
+          <button onClick={() => onEdit(indicator)} className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500">Edit Indicator</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DetailMetric({ label, value }: { label: string; value: string | number }) {
+  return <div className="rounded-lg border border-slate-700 bg-slate-800/60 p-4"><p className="text-xs text-slate-500">{label}</p><p className="mt-1 font-semibold text-white">{value}</p></div>;
 }
 
 function StatCard({ label, value, icon }: { label: string; value: string | number; icon: React.ReactNode }) {

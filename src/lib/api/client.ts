@@ -1,16 +1,22 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1";
+const ADMIN_TOKEN_KEY = "pkaymne_admin_token";
+const SUPER_TOKEN_KEY = "pkaymne_super_token";
 
 type RequestOptions = RequestInit & {
   token?: string | null;
+  skipJsonHeader?: boolean;
 };
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const { skipJsonHeader, token, ...fetchOptions } = options;
   const headers = new Headers(options.headers);
-  headers.set("Content-Type", "application/json");
-  if (options.token) {
-    headers.set("Authorization", `Bearer ${options.token}`);
+  if (!skipJsonHeader) {
+    headers.set("Content-Type", "application/json");
   }
-  const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+  const response = await fetch(`${API_BASE_URL}${path}`, { ...fetchOptions, headers });
   if (!response.ok) {
     const body = await response.text();
     throw new Error(body || `Request failed: ${response.status}`);
@@ -22,7 +28,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 }
 
 export async function getDemoToken(kind: "admin" | "super" = "admin") {
-  const storageKey = kind === "super" ? "pkaymne_super_token" : "pkaymne_admin_token";
+  const storageKey = kind === "super" ? SUPER_TOKEN_KEY : ADMIN_TOKEN_KEY;
   const existing = localStorage.getItem(storageKey);
   if (existing) return existing;
   const credentials =
@@ -37,7 +43,24 @@ export async function getDemoToken(kind: "admin" | "super" = "admin") {
   return session.access_token;
 }
 
+export function getStoredToken(kind: "admin" | "super" = "admin") {
+  return localStorage.getItem(kind === "super" ? SUPER_TOKEN_KEY : ADMIN_TOKEN_KEY);
+}
+
+export function storeApiSession(accessToken: string, kind: "admin" | "super" = "admin") {
+  localStorage.setItem(kind === "super" ? SUPER_TOKEN_KEY : ADMIN_TOKEN_KEY, accessToken);
+}
+
+export async function loginWithPassword(email: string, password: string) {
+  const session = await apiRequest<{ access_token: string; user?: { role?: string } }>("/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+  storeApiSession(session.access_token, session.user?.role === "platform_admin" ? "super" : "admin");
+  return session;
+}
+
 export function clearApiSession() {
-  localStorage.removeItem("pkaymne_admin_token");
-  localStorage.removeItem("pkaymne_super_token");
+  localStorage.removeItem(ADMIN_TOKEN_KEY);
+  localStorage.removeItem(SUPER_TOKEN_KEY);
 }

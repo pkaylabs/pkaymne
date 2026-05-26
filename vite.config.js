@@ -14,7 +14,7 @@ export default defineConfig({
         alias: [{ find: '@', replacement: path.resolve(__dirname, 'src') }],
     },
     build: {
-        sourcemap: true,
+        sourcemap: false,
         chunkSizeWarningLimit: 650,
         rollupOptions: {
             output: {

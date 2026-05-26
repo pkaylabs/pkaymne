@@ -111,6 +111,19 @@ html {
   padding-inline: 1rem;
 }
 
+.input-dark option,
+.field-input option,
+.report-control option {
+  background-color: rgb(15 23 42);
+  color: white;
+}
+
+select.input-dark,
+select.field-input,
+select.report-control {
+  color-scheme: dark;
+}
+
 .report-control {
   width: 100%;
   min-height: 44px;

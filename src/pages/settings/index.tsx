@@ -11,6 +11,7 @@ import {
   Link2,
   Lock,
   Mail,
+  Plus,
   RefreshCw,
   Save,
   ShieldCheck,
@@ -20,7 +21,8 @@ import {
   Users,
 } from "lucide-react";
 import type React from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { apiRequest, getDemoToken } from "@/lib/api/client";
 
 type Settings = {
   institution: {
@@ -56,6 +58,7 @@ type Settings = {
     billingAlerts: boolean;
   };
 };
+type Department = { id: number; name: string; description: string | null };
 
 const initialSettings: Settings = {
   institution: {
@@ -101,8 +104,30 @@ const auditEvents = [
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState(initialSettings);
+  const [departments, setDepartments] = useState<Department[]>([
+    { id: 1, name: "Monitoring and Evaluation", description: "Programme tracking and institutional reporting." },
+    { id: 2, name: "Policy and Planning", description: "Planning, policy review, and strategic coordination." },
+  ]);
+  const [departmentForm, setDepartmentForm] = useState({ name: "", description: "" });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    async function loadDepartments() {
+      try {
+        const token = await getDemoToken();
+        const rows = await apiRequest<Department[]>("/organizations/departments", { token });
+        if (active && rows.length) setDepartments(rows);
+      } catch {
+        // Keep seeded UI departments if the local API is offline.
+      }
+    }
+    void loadDepartments();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const saveSettings = async () => {
     setSaving(true);
@@ -114,6 +139,22 @@ export default function SettingsPage() {
 
   const update = <Section extends keyof Settings>(section: Section, patch: Partial<Settings[Section]>) => {
     setSettings((current) => ({ ...current, [section]: { ...current[section], ...patch } }));
+  };
+
+  const createDepartment = async () => {
+    if (!departmentForm.name.trim()) return;
+    try {
+      const token = await getDemoToken();
+      const created = await apiRequest<Department>("/organizations/departments", {
+        method: "POST",
+        token,
+        body: JSON.stringify(departmentForm),
+      });
+      setDepartments((items) => [...items, created]);
+    } catch {
+      setDepartments((items) => [...items, { id: Date.now(), name: departmentForm.name, description: departmentForm.description }]);
+    }
+    setDepartmentForm({ name: "", description: "" });
   };
 
   return (
@@ -182,6 +223,31 @@ export default function SettingsPage() {
                 <Field label="Primary contact email">
                   <input value={settings.institution.contactEmail} onChange={(event) => update("institution", { contactEmail: event.target.value })} className="input-dark h-11" />
                 </Field>
+              </div>
+            </SettingsCard>
+
+            <SettingsCard title="Departments" description="Create institution departments used for project ownership, filters, and reporting." icon={<Building2 />}>
+              <div className="grid gap-5 lg:grid-cols-[1fr_1fr_auto]">
+                <Field label="Department name">
+                  <input value={departmentForm.name} onChange={(event) => setDepartmentForm({ ...departmentForm, name: event.target.value })} className="input-dark h-11" placeholder="Research and Evaluation" />
+                </Field>
+                <Field label="Description">
+                  <input value={departmentForm.description} onChange={(event) => setDepartmentForm({ ...departmentForm, description: event.target.value })} className="input-dark h-11" placeholder="Optional department purpose" />
+                </Field>
+                <div className="flex items-end">
+                  <button onClick={createDepartment} className="inline-flex h-11 items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-700">
+                    <Plus className="h-4 w-4" />
+                    Add
+                  </button>
+                </div>
+              </div>
+              <div className="mt-5 grid gap-3 md:grid-cols-2">
+                {departments.map((department) => (
+                  <div key={department.id} className="rounded-lg border border-gray-700 bg-gray-900/45 p-4">
+                    <p className="font-semibold text-white">{department.name}</p>
+                    <p className="mt-1 text-sm leading-6 text-gray-400">{department.description || "No description yet."}</p>
+                  </div>
+                ))}
               </div>
             </SettingsCard>
 

@@ -2,7 +2,7 @@ import { lazy, Suspense } from "react";
 import type React from "react";
 import { Outlet, type Route, type SearchPredicate } from "react-location";
 import type { LocationGenerics } from "./location";
-import { CONTACT, DASHBOARD, HOME, INDICATORS, OBJECTIVES, OPERATIONS, PRIVACY, PROJECTS, REPORTS, SETTINGS, USERS, SYSTEM } from "@/constants/page-path";
+import { CONTACT, DASHBOARD, HOME, PRIVACY } from "@/constants/page-path";
 
 const DashboardPage = lazy(() => import("@/pages/dashboard"));
 const ObjectivesPage = lazy(() => import("@/pages/objectives"));
@@ -20,7 +20,7 @@ const PrivacyPage = lazy(() => import("@/pages/privacy"));
 
 export type RouteProps = Omit<Route, "children"> & {
   navigation?: boolean;
-  sidebar?: { label: string; icon: any };
+  sidebar?: { label: string; icon: React.ElementType };
   children?: RouteProps[];
   search?: SearchPredicate<LocationGenerics>;
 };

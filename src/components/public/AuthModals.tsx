@@ -15,9 +15,9 @@ import {
   X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Link } from "react-location";
 
 import { DASHBOARD } from "@/constants/page-path";
+import { apiRequest, loginWithPassword, storeApiSession } from "@/lib/api/client";
 
 type AuthMode = "login" | "signup";
 type LoginView = "login" | "forgot-email" | "forgot-otp" | "forgot-reset" | "forgot-done";
@@ -210,6 +210,82 @@ function LoginPanel({
   setConfirmPasswordVisible: (visible: boolean) => void;
   onSwitch: () => void;
 }) {
+  const [email, setEmail] = useState("admin@pkaymne.local");
+  const [password, setPassword] = useState("Password123!");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [resetToken, setResetToken] = useState("");
+  const [message, setMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const signIn = async () => {
+    setIsSubmitting(true);
+    setMessage("");
+    try {
+      await loginWithPassword(email, password);
+      window.location.assign(DASHBOARD);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to sign in.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const sendOtp = async () => {
+    setIsSubmitting(true);
+    setMessage("");
+    try {
+      const response = await apiRequest<{ debug_otp?: string; message: string }>("/auth/forgot-password", {
+        method: "POST",
+        body: JSON.stringify({ email: resetEmail }),
+      });
+      if (response.debug_otp) setOtp(response.debug_otp);
+      setMessage(response.debug_otp ? `Prototype OTP: ${response.debug_otp}` : response.message);
+      setView("forgot-otp");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to send OTP.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const verifyOtp = async () => {
+    setIsSubmitting(true);
+    setMessage("");
+    try {
+      const response = await apiRequest<{ reset_token: string }>("/auth/verify-otp", {
+        method: "POST",
+        body: JSON.stringify({ email: resetEmail, otp }),
+      });
+      setResetToken(response.reset_token);
+      setView("forgot-reset");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to verify OTP.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const resetPassword = async () => {
+    if (newPassword !== confirmPassword) {
+      setMessage("Passwords do not match.");
+      return;
+    }
+    setIsSubmitting(true);
+    setMessage("");
+    try {
+      await apiRequest("/auth/reset-password", {
+        method: "POST",
+        body: JSON.stringify({ reset_token: resetToken, password: newPassword }),
+      });
+      setView("forgot-done");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to reset password.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   if (view === "forgot-done") {
     return (
       <div className="mx-auto max-w-md py-10 text-center">
@@ -247,8 +323,8 @@ function LoginPanel({
         {view === "forgot-email" && (
           <div className="mt-8 space-y-5">
             <PasswordlessEmail value={resetEmail} onChange={setResetEmail} />
-            <button onClick={() => setView("forgot-otp")} className="w-full rounded-xl bg-slate-950 px-5 py-3 font-semibold text-white transition hover:bg-blue-600">
-              Send OTP
+            <button disabled={isSubmitting || !resetEmail} onClick={sendOtp} className="w-full rounded-xl bg-slate-950 px-5 py-3 font-semibold text-white transition hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-slate-400">
+              {isSubmitting ? "Sending..." : "Send OTP"}
             </button>
           </div>
         )}
@@ -264,8 +340,8 @@ function LoginPanel({
                 placeholder="000000"
               />
             </label>
-            <button onClick={() => setView("forgot-reset")} className="w-full rounded-xl bg-slate-950 px-5 py-3 font-semibold text-white transition hover:bg-blue-600">
-              Verify OTP
+            <button disabled={isSubmitting || otp.length < 6} onClick={verifyOtp} className="w-full rounded-xl bg-slate-950 px-5 py-3 font-semibold text-white transition hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-slate-400">
+              {isSubmitting ? "Verifying..." : "Verify OTP"}
             </button>
             <button className="mx-auto flex items-center gap-2 text-sm font-semibold text-blue-600">
               <RotateCcw className="h-4 w-4" />
@@ -281,18 +357,23 @@ function LoginPanel({
               visible={newPasswordVisible}
               onToggle={() => setNewPasswordVisible(!newPasswordVisible)}
               placeholder="Create new password"
+              value={newPassword}
+              onChange={setNewPassword}
             />
             <PasswordField
               label="Confirm password"
               visible={confirmPasswordVisible}
               onToggle={() => setConfirmPasswordVisible(!confirmPasswordVisible)}
               placeholder="Repeat new password"
+              value={confirmPassword}
+              onChange={setConfirmPassword}
             />
-            <button onClick={() => setView("forgot-done")} className="w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-700">
-              Reset password
+            <button disabled={isSubmitting || !resetToken} onClick={resetPassword} className="w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400">
+              {isSubmitting ? "Resetting..." : "Reset password"}
             </button>
           </div>
         )}
+        {message && <p className="mt-5 rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-700">{message}</p>}
       </div>
     );
   }
@@ -311,12 +392,14 @@ function LoginPanel({
         <span className="h-px flex-1 bg-slate-200" />
       </div>
       <div className="space-y-4">
-        <PasswordlessEmail value="" onChange={() => undefined} />
+        <PasswordlessEmail value={email} onChange={setEmail} />
         <PasswordField
           label="Password"
           visible={passwordVisible}
           onToggle={() => setPasswordVisible(!passwordVisible)}
           placeholder="Enter password"
+          value={password}
+          onChange={setPassword}
         />
       </div>
       <div className="mt-6 flex items-center justify-between text-sm">
@@ -328,13 +411,15 @@ function LoginPanel({
           Forgot password?
         </button>
       </div>
-      <Link
-        to={DASHBOARD}
-        className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-3 font-semibold text-white transition hover:bg-blue-600"
+      {message && <p className="mt-5 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{message}</p>}
+      <button
+        onClick={signIn}
+        disabled={isSubmitting}
+        className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-3 font-semibold text-white transition hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-slate-400"
       >
-        Continue to dashboard
+        {isSubmitting ? "Signing in..." : "Continue to dashboard"}
         <ArrowRight className="h-4 w-4" />
-      </Link>
+      </button>
       <p className="mt-6 text-center text-sm text-slate-600">
         New to PKay M&E?{" "}
         <button className="font-semibold text-blue-600" onClick={onSwitch}>
@@ -364,6 +449,44 @@ function SignupPanel({
   setPasswordVisible: (visible: boolean) => void;
   onSwitch: () => void;
 }) {
+  const [organizationName, setOrganizationName] = useState("PKay Demo Institution");
+  const [name, setName] = useState("Workspace Owner");
+  const [email, setEmail] = useState(`owner.${Date.now()}@pkaymne.local`);
+  const [password, setPassword] = useState("Password123!");
+  const [message, setMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const planIds: Record<string, number> = { Starter: 1, Professional: 2, Enterprise: 3 };
+
+  const completeSignup = async () => {
+    setIsSubmitting(true);
+    setMessage("");
+    try {
+      const session = await apiRequest<{ access_token: string }>("/auth/signup", {
+        method: "POST",
+        body: JSON.stringify({
+          organization_name: organizationName,
+          name,
+          email,
+          password,
+        }),
+      });
+      storeApiSession(session.access_token);
+      await apiRequest("/payments/paystack/initialize", {
+        method: "POST",
+        token: session.access_token,
+        body: JSON.stringify({
+          plan_id: planIds[selectedPlan],
+          metadata: { selected_plan: selectedPlan, source: "signup_wizard" },
+        }),
+      });
+      window.location.assign(DASHBOARD);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to complete signup.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="py-6">
       <div className="pr-10">
@@ -388,10 +511,19 @@ function SignupPanel({
             <span className="text-sm font-medium text-slate-700">Institution name</span>
             <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-3 focus-within:border-blue-500">
               <UserRound className="h-5 w-5 text-slate-400" />
-              <input className="w-full outline-none" placeholder="Ministry, NGO, Agency" />
+              <input value={organizationName} onChange={(event) => setOrganizationName(event.target.value)} className="w-full outline-none" placeholder="Ministry, NGO, Agency" />
             </div>
           </label>
-          <PasswordlessEmail value="" onChange={() => undefined} label="Work email" placeholder="you@institution.org" />
+          <label className="block">
+            <span className="text-sm font-medium text-slate-700">Your name</span>
+            <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-3 focus-within:border-blue-500">
+              <UserRound className="h-5 w-5 text-slate-400" />
+              <input value={name} onChange={(event) => setName(event.target.value)} className="w-full outline-none" placeholder="Your full name" />
+            </div>
+          </label>
+          <div className="sm:col-span-2">
+            <PasswordlessEmail value={email} onChange={setEmail} label="Work email" placeholder="you@institution.org" />
+          </div>
           <label className="block sm:col-span-2">
             <span className="text-sm font-medium text-slate-700">Primary programme focus</span>
             <select className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500">
@@ -407,6 +539,8 @@ function SignupPanel({
               visible={passwordVisible}
               onToggle={() => setPasswordVisible(!passwordVisible)}
               placeholder="Minimum 8 characters"
+              value={password}
+              onChange={setPassword}
             />
           </div>
         </div>
@@ -491,12 +625,13 @@ function SignupPanel({
             <ArrowRight className="h-4 w-4" />
           </button>
         ) : (
-          <Link to={DASHBOARD} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700">
-            Complete signup
+          <button disabled={isSubmitting} onClick={completeSignup} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400">
+            {isSubmitting ? "Creating workspace..." : "Complete signup"}
             <ArrowRight className="h-4 w-4" />
-          </Link>
+          </button>
         )}
       </div>
+      {message && <p className="mt-5 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{message}</p>}
     </div>
   );
 }
@@ -528,18 +663,22 @@ function PasswordField({
   visible,
   onToggle,
   placeholder,
+  value,
+  onChange,
 }: {
   label: string;
   visible: boolean;
   onToggle: () => void;
   placeholder: string;
+  value: string;
+  onChange: (value: string) => void;
 }) {
   return (
     <label className="block">
       <span className="text-sm font-medium text-slate-700">{label}</span>
       <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-3 focus-within:border-blue-500">
         <LockKeyhole className="h-5 w-5 text-slate-400" />
-        <input className="w-full outline-none" placeholder={placeholder} type={visible ? "text" : "password"} />
+        <input value={value} onChange={(event) => onChange(event.target.value)} className="w-full outline-none" placeholder={placeholder} type={visible ? "text" : "password"} />
         <button type="button" onClick={onToggle} className="rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700" aria-label={visible ? "Hide password" : "Show password"}>
           {visible ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
         </button>

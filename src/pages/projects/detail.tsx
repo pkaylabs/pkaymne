@@ -30,7 +30,6 @@ import {
   Send,
   ShieldCheck,
   Smartphone,
-  TableProperties,
   Trash2,
   Type,
   UploadCloud,

@@ -3,6 +3,7 @@ import {
   BarChart3,
   CheckCircle2,
   Edit3,
+  Eye,
   Flag,
   Plus,
   Search,
@@ -13,6 +14,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useMemo, useState } from "react";
+import { ActionMenu } from "@/components/core/action-menu";
 
 type OutcomeStatus = "Active" | "Completed" | "Pending" | "On Hold";
 type OutcomePriority = "High" | "Medium" | "Low";
@@ -104,6 +106,7 @@ export default function OutcomesPage() {
   const [priorityFilter, setPriorityFilter] = useState<OutcomePriority | "All">("All");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingOutcome, setEditingOutcome] = useState<Outcome | null>(null);
+  const [selectedOutcome, setSelectedOutcome] = useState<Outcome | null>(null);
   const [form, setForm] = useState<OutcomeForm>(emptyForm);
 
   const filteredOutcomes = useMemo(() => {
@@ -220,7 +223,7 @@ export default function OutcomesPage() {
                   <th className="w-[12%] px-3 py-3 font-semibold">Priority</th>
                   <th className="w-[17%] px-3 py-3 font-semibold">Progress</th>
                   <th className="w-[13%] px-3 py-3 font-semibold">Due</th>
-                  <th className="w-[72px] px-3 py-3 font-semibold">Actions</th>
+                  <th className="w-[96px] px-3 py-3 font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-700">
@@ -259,14 +262,14 @@ export default function OutcomesPage() {
                     </td>
                     <td className="px-3 py-4 text-gray-300">{formatDate(outcome.dueDate)}</td>
                     <td className="px-3 py-4">
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => openEdit(outcome)} className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-700 hover:text-blue-300" aria-label={`Edit ${outcome.name}`}>
-                          <Edit3 className="h-4 w-4" />
-                        </button>
-                        <button onClick={() => deleteOutcome(outcome.id)} className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-700 hover:text-red-300" aria-label={`Delete ${outcome.name}`}>
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
+                      <ActionMenu
+                        label={`Actions for ${outcome.name}`}
+                        items={[
+                          { label: "View details", icon: <Eye />, onClick: () => setSelectedOutcome(outcome) },
+                          { label: "Edit outcome", icon: <Edit3 />, onClick: () => openEdit(outcome) },
+                          { label: "Delete outcome", icon: <Trash2 />, tone: "danger", onClick: () => deleteOutcome(outcome.id) },
+                        ]}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -331,8 +334,61 @@ export default function OutcomesPage() {
           </div>
         </div>
       )}
+      {selectedOutcome && <OutcomeDetailModal outcome={selectedOutcome} onClose={() => setSelectedOutcome(null)} onEdit={(outcome) => { setSelectedOutcome(null); openEdit(outcome); }} />}
     </div>
   );
+}
+
+function OutcomeDetailModal({ outcome, onClose, onEdit }: { outcome: Outcome; onClose: () => void; onEdit: (outcome: Outcome) => void }) {
+  return (
+    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div onClick={(event) => event.stopPropagation()} className="w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 text-white shadow-2xl shadow-black/40">
+        <div className="flex items-start justify-between border-b border-slate-700 px-6 py-5">
+          <div className="flex gap-4">
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-blue-500/15 text-blue-300"><Flag className="h-6 w-6" /></div>
+            <div>
+              <h2 className="text-2xl font-semibold tracking-tight">{outcome.name}</h2>
+              <p className="mt-1 text-sm text-slate-400">{outcome.department} - owned by {outcome.owner}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-white" aria-label="Close outcome details"><X className="h-5 w-5" /></button>
+        </div>
+        <div className="grid gap-5 p-6 lg:grid-cols-[1fr_260px]">
+          <div className="space-y-5">
+            <div className="rounded-xl border border-slate-700 bg-slate-800/60 p-5">
+              <p className="text-sm leading-6 text-slate-300">{outcome.description}</p>
+            </div>
+            <div className="rounded-xl border border-slate-700 bg-slate-800/60 p-5">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-400">Outcome progress</span>
+                <span className="font-semibold text-white">{outcome.progress}%</span>
+              </div>
+              <div className="mt-3 h-3 rounded-full bg-slate-700"><div className="h-3 rounded-full bg-blue-500" style={{ width: `${outcome.progress}%` }} /></div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <DetailMetric label="Indicators" value={outcome.indicators} />
+              <DetailMetric label="Priority" value={outcome.priority} />
+              <DetailMetric label="Due date" value={formatDate(outcome.dueDate)} />
+            </div>
+          </div>
+          <aside className="space-y-3">
+            <DetailMetric label="Status" value={outcome.status} />
+            <DetailMetric label="Department" value={outcome.department} />
+            <DetailMetric label="Owner" value={outcome.owner} />
+            <DetailMetric label="Review posture" value={outcome.progress >= 80 ? "Healthy" : outcome.progress >= 50 ? "Watch" : "Needs attention"} />
+          </aside>
+        </div>
+        <div className="flex justify-end gap-3 border-t border-slate-700 bg-slate-950/45 px-6 py-5">
+          <button onClick={onClose} className="rounded-xl border border-slate-600 px-5 py-2.5 text-sm font-semibold text-slate-200 transition hover:bg-slate-800">Close</button>
+          <button onClick={() => onEdit(outcome)} className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500">Edit Outcome</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DetailMetric({ label, value }: { label: string; value: string | number }) {
+  return <div className="rounded-lg border border-slate-700 bg-slate-800/60 p-4"><p className="text-xs text-slate-500">{label}</p><p className="mt-1 font-semibold text-white">{value}</p></div>;
 }
 
 function StatCard({ label, value, icon }: { label: string; value: string | number; icon: React.ReactNode }) {

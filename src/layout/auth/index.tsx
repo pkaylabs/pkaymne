@@ -1,7 +1,7 @@
 import React from "react";
 import logo from "@/assets/images/logo.png";
 import render from "@/assets/images/render.jpg";
-import { Link, Navigate, Outlet, useLocation } from "react-location";
+import { Outlet } from "react-location";
 
 export default function AuthLayout() {
   return (

@@ -23,11 +23,6 @@ export default defineConfig({
         manualChunks(id) {
           if (!id.includes("node_modules")) return;
           if (id.includes("three")) return "vendor-three";
-          if (id.includes("framer-motion")) return "vendor-motion";
-          if (id.includes("@mui") || id.includes("@emotion")) return "vendor-mui";
-          if (id.includes("@nivo")) return "vendor-charts";
-          if (id.includes("react-dom") || id.includes("react/")) return "vendor-react";
-          if (id.includes("lucide-react") || id.includes("@heroicons") || id.includes("react-icons")) return "vendor-icons";
           return "vendor";
         },
       },

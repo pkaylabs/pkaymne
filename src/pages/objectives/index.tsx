@@ -13,14 +13,16 @@ import {
   X,
 } from "lucide-react";
 import type React from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ActionMenu } from "@/components/core/action-menu";
+import { apiRequest } from "@/lib/api/client";
 
 type OutcomeStatus = "Active" | "Completed" | "Pending" | "On Hold";
 type OutcomePriority = "High" | "Medium" | "Low";
 
 type Outcome = {
   id: number;
+  projectId: number;
   name: string;
   description: string;
   indicators: number;
@@ -34,58 +36,8 @@ type Outcome = {
 
 type OutcomeForm = Omit<Outcome, "id" | "progress">;
 
-const initialOutcomes: Outcome[] = [
-  {
-    id: 1,
-    name: "An industrialised and diversified economy",
-    description: "Increase industrial productivity, export competitiveness, and domestic value addition.",
-    indicators: 5,
-    status: "Active",
-    priority: "High",
-    owner: "Policy and Planning",
-    dueDate: "2026-06-30",
-    progress: 75,
-    department: "Economic Transformation",
-  },
-  {
-    id: 2,
-    name: "Enhanced citizenry participation in the economy",
-    description: "Improve access to productive employment, enterprise support, and inclusive economic services.",
-    indicators: 3,
-    status: "Active",
-    priority: "High",
-    owner: "Monitoring and Evaluation",
-    dueDate: "2026-09-15",
-    progress: 48,
-    department: "Inclusive Growth",
-  },
-  {
-    id: 3,
-    name: "Competitive private sector",
-    description: "Strengthen market access, productivity, and enabling conditions for private sector growth.",
-    indicators: 8,
-    status: "Completed",
-    priority: "Medium",
-    owner: "Research",
-    dueDate: "2026-03-01",
-    progress: 100,
-    department: "Private Sector Development",
-  },
-  {
-    id: 4,
-    name: "Improved district service delivery",
-    description: "Track local service access, timeliness, and satisfaction across priority districts.",
-    indicators: 6,
-    status: "Pending",
-    priority: "Medium",
-    owner: "District Coordination",
-    dueDate: "2026-11-20",
-    progress: 18,
-    department: "Local Governance",
-  },
-];
-
 const emptyForm: OutcomeForm = {
+  projectId: 0,
   name: "",
   description: "",
   indicators: 1,
@@ -100,7 +52,10 @@ const statuses: Array<OutcomeStatus | "All"> = ["All", "Active", "Completed", "P
 const priorities: Array<OutcomePriority | "All"> = ["All", "High", "Medium", "Low"];
 
 export default function OutcomesPage() {
-  const [outcomes, setOutcomes] = useState<Outcome[]>(initialOutcomes);
+  const [outcomes, setOutcomes] = useState<Outcome[]>([]);
+  const [projects, setProjects] = useState<Array<{ id: number; name: string }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<OutcomeStatus | "All">("All");
   const [priorityFilter, setPriorityFilter] = useState<OutcomePriority | "All">("All");
@@ -108,6 +63,42 @@ export default function OutcomesPage() {
   const [editingOutcome, setEditingOutcome] = useState<Outcome | null>(null);
   const [selectedOutcome, setSelectedOutcome] = useState<Outcome | null>(null);
   const [form, setForm] = useState<OutcomeForm>(emptyForm);
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      apiRequest<Array<{ id: number; project_id: number; name: string; description: string | null; due_date: string | null }>>("/outcomes"),
+      apiRequest<Array<{ id: number; name: string }>>("/projects"),
+      apiRequest<Array<{ outcome_id: number; baseline: number; target: number; actual: number }>>("/indicators"),
+    ])
+      .then(([rows, projectRows, indicators]) => {
+        if (!active) return;
+        const projectNames = new Map(projectRows.map((project) => [project.id, project.name]));
+        setProjects(projectRows);
+        setOutcomes(rows.map((row) => {
+          const linked = indicators.filter((indicator) => indicator.outcome_id === row.id);
+          const progress = linked.length
+            ? Math.round(linked.reduce((sum, indicator) => sum + progressOf(indicator.baseline, indicator.target, indicator.actual), 0) / linked.length)
+            : 0;
+          return {
+            id: row.id,
+            projectId: row.project_id,
+            name: row.name,
+            description: row.description ?? "",
+            indicators: linked.length,
+            status: progress >= 100 ? "Completed" : progress > 0 ? "Active" : "Pending",
+            priority: "Medium",
+            owner: "Monitoring and Evaluation",
+            dueDate: row.due_date ?? "",
+            progress,
+            department: projectNames.get(row.project_id) ?? "Unassigned project",
+          };
+        }));
+      })
+      .catch((caught) => active && setError(caught instanceof Error ? caught.message : "Could not load outcomes."))
+      .finally(() => active && setLoading(false));
+    return () => { active = false; };
+  }, []);
 
   const filteredOutcomes = useMemo(() => {
     const needle = searchTerm.toLowerCase().trim();
@@ -134,7 +125,7 @@ export default function OutcomesPage() {
 
   const openCreate = () => {
     setEditingOutcome(null);
-    setForm(emptyForm);
+    setForm({ ...emptyForm, projectId: projects[0]?.id ?? 0 });
     setModalOpen(true);
   };
 
@@ -142,6 +133,7 @@ export default function OutcomesPage() {
     setEditingOutcome(outcome);
     setForm({
       name: outcome.name,
+      projectId: outcome.projectId,
       description: outcome.description,
       indicators: outcome.indicators,
       status: outcome.status,
@@ -153,19 +145,28 @@ export default function OutcomesPage() {
     setModalOpen(true);
   };
 
-  const saveOutcome = () => {
-    if (!form.name.trim() || !form.description.trim() || !form.department.trim()) return;
+  const saveOutcome = async () => {
+    if (!form.name.trim() || !form.description.trim() || !form.projectId) return;
 
     if (editingOutcome) {
+      await apiRequest(`/outcomes/${editingOutcome.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ name: form.name, description: form.description, due_date: form.dueDate || null }),
+      });
       setOutcomes((items) => items.map((item) => (item.id === editingOutcome.id ? { ...item, ...form } : item)));
     } else {
-      const nextId = Math.max(0, ...outcomes.map((outcome) => outcome.id)) + 1;
-      setOutcomes((items) => [...items, { id: nextId, progress: 0, ...form }]);
+      const created = await apiRequest<{ id: number }>("/outcomes", {
+        method: "POST",
+        body: JSON.stringify({ project_id: form.projectId, name: form.name, description: form.description, due_date: form.dueDate || null }),
+      });
+      const projectName = projects.find((project) => project.id === form.projectId)?.name ?? "Unassigned project";
+      setOutcomes((items) => [...items, { id: created.id, progress: 0, ...form, department: projectName }]);
     }
     setModalOpen(false);
   };
 
-  const deleteOutcome = (id: number) => {
+  const deleteOutcome = async (id: number) => {
+    await apiRequest(`/outcomes/${id}`, { method: "DELETE" });
     setOutcomes((items) => items.filter((item) => item.id !== id));
   };
 
@@ -214,6 +215,8 @@ export default function OutcomesPage() {
           </div>
 
           <div className="p-3">
+            {loading && <div className="p-8 text-center text-sm text-gray-400">Loading outcomes...</div>}
+            {error && <div className="m-3 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">{error}</div>}
             <table className="w-full table-fixed">
               <thead className="text-left text-xs uppercase tracking-wide text-gray-500">
                 <tr>
@@ -267,7 +270,7 @@ export default function OutcomesPage() {
                         items={[
                           { label: "View details", icon: <Eye />, onClick: () => setSelectedOutcome(outcome) },
                           { label: "Edit outcome", icon: <Edit3 />, onClick: () => openEdit(outcome) },
-                          { label: "Delete outcome", icon: <Trash2 />, tone: "danger", onClick: () => deleteOutcome(outcome.id) },
+                          { label: "Delete outcome", icon: <Trash2 />, tone: "danger", onClick: () => void deleteOutcome(outcome.id) },
                         ]}
                       />
                     </td>
@@ -298,6 +301,12 @@ export default function OutcomesPage() {
               </button>
             </div>
             <div className="grid gap-5 px-6 py-6 sm:grid-cols-2">
+              <Field label="Project" className="sm:col-span-2">
+                <select value={form.projectId} onChange={(event) => setForm({ ...form, projectId: Number(event.target.value) })} className="input-dark h-11" disabled={Boolean(editingOutcome)}>
+                  <option value={0}>Select project</option>
+                  {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+                </select>
+              </Field>
               <Field label="Outcome name" className="sm:col-span-2">
                 <input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} className="input-dark h-11" placeholder="Competitive private sector" />
               </Field>
@@ -329,7 +338,7 @@ export default function OutcomesPage() {
             </div>
             <div className="flex justify-end gap-3 border-t border-slate-700 bg-slate-950/45 px-6 py-5">
               <button onClick={() => setModalOpen(false)} className="rounded-xl border border-slate-600 px-5 py-2.5 text-sm font-semibold text-slate-200 transition hover:bg-slate-800">Cancel</button>
-              <button onClick={saveOutcome} className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500">{editingOutcome ? "Save Changes" : "Create Outcome"}</button>
+              <button onClick={() => void saveOutcome()} className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500">{editingOutcome ? "Save Changes" : "Create Outcome"}</button>
             </div>
           </div>
         </div>
@@ -439,4 +448,10 @@ function priorityClass(priority: OutcomePriority) {
 function formatDate(value: string) {
   if (!value) return "Not set";
   return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value));
+}
+
+function progressOf(baseline: number, target: number, actual: number) {
+  const range = target - baseline;
+  if (range === 0) return actual >= target ? 100 : 0;
+  return Math.max(0, Math.min(100, ((actual - baseline) / range) * 100));
 }

@@ -38,8 +38,9 @@ import {
   X,
 } from "lucide-react";
 import type React from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-location";
+import { apiRequest } from "@/lib/api/client";
 
 type Section = "overview" | "outcomes" | "indicators" | "forms" | "submissions" | "reports";
 type FieldType = "Text" | "Long Text" | "Number" | "Date" | "Select" | "Radio" | "Checkbox" | "Photo" | "GPS";
@@ -72,7 +73,7 @@ type FormField = {
   options: string[];
 };
 
-const project = {
+const defaultProject = {
   id: "1",
   name: "Industrial Transformation Programme",
   owner: "Monitoring and Evaluation",
@@ -84,49 +85,16 @@ const project = {
   budget: 1250000,
 };
 
-const projectOutcomes = [
+const defaultProjectOutcomes: Array<[string, string, number, number]> = [
   ["Industrial productivity improved", "Active", 5, 74],
   ["Export competitiveness strengthened", "Active", 7, 62],
   ["Private sector capacity expanded", "Planning", 4, 35],
 ];
 
-const projectIndicators = [
+const defaultProjectIndicators: Array<[string, string, string, string]> = [
   ["Manufacturing value-added share of GDP", "4.1%", "4.5%", "On Track"],
   ["Non-extractive export earnings", "11.8 USD m", "18 USD m", "Off Track"],
   ["Manufacturing productivity growth rate", "3.2%", "4.5%", "At Risk"],
-];
-
-const initialComputationRules: ComputationRule[] = [
-  {
-    id: 1,
-    indicator: "Manufacturing value-added share of GDP",
-    method: "Average",
-    sourceForm: "Industrial transformation field visit",
-    sourceField: "Manufacturing jobs created",
-    numeratorField: "Manufacturing jobs created",
-    denominatorField: "District",
-    filters: "Approved submissions only",
-    groupBy: "District",
-    formula: "avg(manufacturing_jobs_created)",
-    previewValue: "4.1%",
-    submissionsUsed: 428,
-    lastComputed: "May 24, 2026 09:30",
-  },
-  {
-    id: 2,
-    indicator: "Non-extractive export earnings",
-    method: "Sum",
-    sourceForm: "Industrial transformation field visit",
-    sourceField: "Verified export earnings",
-    numeratorField: "Verified export earnings",
-    denominatorField: "Target export earnings",
-    filters: "Approved submissions only",
-    groupBy: "Month",
-    formula: "sum(verified_export_earnings)",
-    previewValue: "11.8 USD m",
-    submissionsUsed: 176,
-    lastComputed: "May 23, 2026 16:45",
-  },
 ];
 
 const initialFields: FormField[] = [
@@ -153,14 +121,14 @@ const sourceFields = ["District", "Facility name", "Manufacturing jobs created",
 const groupingOptions = ["None", "District", "Month", "Quarter", "Project site", "Field agent"];
 const filterOptions = ["Approved submissions only", "All submissions", "Current reporting period", "Exclude flagged records"];
 
-const submissions = [
+const defaultSubmissions = [
   ["SUB-1048", "Tamale Industrial Cluster", "Ama Boateng", "May 22, 2026", "Approved"],
   ["SUB-1047", "Kumasi Production Hub", "Daniel Mensah", "May 21, 2026", "Needs Review"],
   ["SUB-1046", "Tema Export Site", "Kojo Asare", "May 20, 2026", "Approved"],
   ["SUB-1045", "Sunyani Skills Center", "Efua Grant", "May 19, 2026", "Rejected"],
 ] as Array<[string, string, string, string, SubmissionStatus]>;
 
-const reports = [
+const defaultReports: Array<[string, string, string]> = [
   ["Monthly Programme Brief", "Executive Summary", "Ready"],
   ["Indicator Variance Review", "Indicator Performance", "Draft"],
   ["Field Submission Quality Audit", "Field Collection", "Ready"],
@@ -190,9 +158,21 @@ const sectionMeta: Record<Section, { label: string; icon: React.ElementType }> =
 export default function ProjectDetailPage() {
   const pathname = useLocation().current.pathname;
   const section = getSection(pathname);
+  const projectId = Number(pathname.match(/\/projects\/(\d+)/)?.[1] ?? 0);
+  const [project, setProject] = useState(defaultProject);
+  const [projectOutcomes, setProjectOutcomes] = useState(defaultProjectOutcomes);
+  const [projectIndicators, setProjectIndicators] = useState(defaultProjectIndicators);
+  const [submissions, setSubmissions] = useState(defaultSubmissions);
+  const [reports, setReports] = useState(defaultReports);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [pageError, setPageError] = useState("");
+  const [formId, setFormId] = useState<number | null>(null);
+  const [indicatorIds, setIndicatorIds] = useState<Record<string, number>>({});
+  const [formSaving, setFormSaving] = useState(false);
+  const [formNotice, setFormNotice] = useState("");
   const [fields, setFields] = useState(initialFields);
-  const [computationRules, setComputationRules] = useState(initialComputationRules);
-  const [selectedRuleId, setSelectedRuleId] = useState(initialComputationRules[0]?.id ?? 0);
+  const [computationRules, setComputationRules] = useState<ComputationRule[]>([]);
+  const [selectedRuleId, setSelectedRuleId] = useState(0);
   const [selectedFieldId, setSelectedFieldId] = useState(initialFields[0]?.id ?? 0);
   const [formMeta, setFormMeta] = useState({
     title: "Industrial transformation field visit",
@@ -201,13 +181,163 @@ export default function ProjectDetailPage() {
   });
   const [reviewStatus, setReviewStatus] = useState<SubmissionStatus | "All">("All");
 
+  useEffect(() => {
+    if (!projectId) {
+      setPageError("Invalid project address.");
+      setPageLoading(false);
+      return;
+    }
+    let active = true;
+    Promise.all([
+      apiRequest<{
+        project: { id: number; name: string; status: string; end_date: string | null; budget: number | null; department_id: number | null };
+        summary: { completion: number; districts_count: number; submissions_count: number };
+      }>(`/projects/${projectId}/summary`),
+      apiRequest<Array<{ id: number; name: string }>>(`/projects/${projectId}/outcomes`),
+      apiRequest<Array<{ id: number; outcome_id: number; name: string; baseline: number; target: number; actual: number; unit: string | null }>>(`/projects/${projectId}/indicators`),
+      apiRequest<Array<{ id: number; device_id: string | null; status: string; created_at: string }>>(`/submissions?project_id=${projectId}`),
+      apiRequest<{ items: Array<{ title: string; template: string; status: string }> }>(`/reports?project_id=${projectId}`),
+      apiRequest<Array<{ id: number; name: string; description: string | null }>>(`/projects/${projectId}/forms`),
+      apiRequest<Array<{
+        id: number;
+        indicator_id: number;
+        source_form_id: number | null;
+        method: AggregationMethod;
+        source_field_key: string | null;
+        numerator_field_key: string | null;
+        denominator_field_key: string | null;
+        formula: string | null;
+        filters: Record<string, unknown>;
+        group_by: string[];
+        preview_value: number | null;
+        submissions_used: number;
+        last_computed_at: string | null;
+      }>>(`/projects/${projectId}/computation-rules`),
+    ])
+      .then(async ([summary, outcomeRows, indicatorRows, submissionRows, reportRows, formRows, ruleRows]) => {
+        if (!active) return;
+        setProject({
+          id: String(summary.project.id),
+          name: summary.project.name,
+          owner: summary.project.department_id ? `Department ${summary.project.department_id}` : "Monitoring and Evaluation",
+          status: titleCase(summary.project.status),
+          reviewDate: summary.project.end_date ?? "",
+          completion: summary.summary.completion,
+          districts: summary.summary.districts_count,
+          submissions: summary.summary.submissions_count || submissionRows.length,
+          budget: Number(summary.project.budget ?? 0),
+        });
+        setProjectOutcomes(outcomeRows.map((outcome) => {
+          const linked = indicatorRows.filter((indicator) => indicator.outcome_id === outcome.id);
+          const progress = linked.length
+            ? Math.round(linked.reduce((sum, indicator) => sum + metricProgress(indicator.baseline, indicator.target, indicator.actual), 0) / linked.length)
+            : 0;
+          return [outcome.name, progress >= 100 ? "Completed" : progress > 0 ? "Active" : "Planning", linked.length, progress] as [string, string, number, number];
+        }));
+        setProjectIndicators(indicatorRows.map((indicator) => {
+          const progress = metricProgress(indicator.baseline, indicator.target, indicator.actual);
+          return [
+            indicator.name,
+            `${indicator.actual} ${indicator.unit ?? ""}`.trim(),
+            `${indicator.target} ${indicator.unit ?? ""}`.trim(),
+            progress >= 100 ? "Achieved" : progress >= 75 ? "On Track" : progress >= 50 ? "At Risk" : "Off Track",
+          ] as [string, string, string, string];
+        }));
+        const idMap = Object.fromEntries(indicatorRows.map((indicator) => [indicator.name, indicator.id]));
+        setIndicatorIds(idMap);
+        const mappedRules = ruleRows.map((rule) => {
+          const indicator = indicatorRows.find((item) => item.id === rule.indicator_id);
+          const sourceForm = formRows.find((item) => item.id === rule.source_form_id);
+          return {
+            id: rule.id,
+            indicator: indicator?.name ?? "Unassigned indicator",
+            method: titleCase(rule.method) as AggregationMethod,
+            sourceForm: sourceForm?.name ?? "",
+            sourceField: fieldLabel(rule.source_field_key),
+            numeratorField: fieldLabel(rule.numerator_field_key),
+            denominatorField: fieldLabel(rule.denominator_field_key),
+            filters: Object.keys(rule.filters).length ? JSON.stringify(rule.filters) : filterOptions[0],
+            groupBy: rule.group_by[0] ?? "None",
+            formula: rule.formula ?? "",
+            previewValue: rule.preview_value == null ? "Pending" : String(rule.preview_value),
+            submissionsUsed: rule.submissions_used,
+            lastComputed: rule.last_computed_at ? new Date(rule.last_computed_at).toLocaleString() : "Not computed yet",
+          };
+        });
+        setComputationRules(mappedRules);
+        setSelectedRuleId(mappedRules[0]?.id ?? 0);
+        setSubmissions(submissionRows.map((submission) => [
+          `SUB-${submission.id}`,
+          submission.device_id || "Field submission",
+          "Field agent",
+          new Date(submission.created_at).toLocaleDateString(),
+          submission.status === "accepted" ? "Approved" : submission.status === "rejected" ? "Rejected" : "Needs Review",
+        ] as [string, string, string, string, SubmissionStatus]));
+        setReports(reportRows.items.map((report) => [report.title, report.template, report.status] as [string, string, string]));
+        if (formRows[0]) {
+          const detail = await apiRequest<{
+            id: number;
+            name: string;
+            description: string | null;
+            current_version: {
+              version: number;
+              is_published: boolean;
+              definition?: { instructions?: string };
+              schema?: { instructions?: string };
+              fields: Array<{
+                id: number;
+                label: string;
+                field_type: FieldType;
+                required: boolean;
+                config: { helper_text?: string; options?: string[]; indicator?: string };
+              }>;
+            } | null;
+          }>(`/forms/${formRows[0].id}`);
+          if (!active) return;
+          setFormId(detail.id);
+          setFormMeta({
+            title: detail.name,
+            version: detail.current_version ? `v${detail.current_version.version}${detail.current_version.is_published ? "" : " draft"}` : "New draft",
+            instructions: detail.current_version?.definition?.instructions ?? detail.current_version?.schema?.instructions ?? detail.description ?? "",
+          });
+          setFields((detail.current_version?.fields ?? []).map((field) => ({
+            id: field.id,
+            label: field.label,
+            type: field.field_type,
+            required: field.required,
+            helperText: field.config.helper_text ?? "",
+            indicator: field.config.indicator ?? "",
+            options: field.config.options ?? [],
+          })));
+        } else {
+          setFields([]);
+          setFormMeta({
+            title: `${summary.project.name} field form`,
+            version: "New draft",
+            instructions: "Collect verified field evidence for project indicator computation.",
+          });
+        }
+      })
+      .catch((caught) => {
+        if (active) setPageError(caught instanceof Error ? caught.message : "Could not load this project.");
+      })
+      .finally(() => {
+        if (active) setPageLoading(false);
+      });
+    return () => { active = false; };
+  }, [projectId]);
+
   const filteredSubmissions = useMemo(
     () => submissions.filter((submission) => reviewStatus === "All" || submission[4] === reviewStatus),
-    [reviewStatus]
+    [reviewStatus, submissions]
   );
 
   const selectedField = fields.find((field) => field.id === selectedFieldId) ?? fields[0];
   const selectedRule = computationRules.find((rule) => rule.id === selectedRuleId) ?? computationRules[0];
+
+  if (pageLoading) {
+    return <div className="grid min-h-full place-items-center bg-gray-900 text-sm text-gray-400">Loading project workspace...</div>;
+  }
 
   const addField = (type: FieldType) => {
     const paletteItem = fieldPalette.find((item) => item.type === type);
@@ -249,11 +379,61 @@ export default function ProjectDetailPage() {
     setComputationRules((items) => items.map((rule) => (rule.id === id ? { ...rule, ...patch } : rule)));
   };
 
+  const saveForm = async (publish: boolean) => {
+    try {
+      setFormSaving(true);
+      setFormNotice("");
+      let activeFormId = formId;
+      if (activeFormId) {
+        await apiRequest(`/forms/${activeFormId}`, {
+          method: "PATCH",
+          body: JSON.stringify({ name: formMeta.title, description: formMeta.instructions }),
+        });
+      } else {
+        const created = await apiRequest<{ id: number }>(`/projects/${projectId}/forms`, {
+          method: "POST",
+          body: JSON.stringify({ name: formMeta.title, description: formMeta.instructions }),
+        });
+        activeFormId = created.id;
+        setFormId(created.id);
+      }
+      const version = await apiRequest<{ version: number; is_published: boolean }>(`/forms/${activeFormId}/versions`, {
+        method: "POST",
+        body: JSON.stringify({
+          publish,
+          schema: { instructions: formMeta.instructions },
+          fields: fields.map((field, order) => ({
+            key: tokenize(field.label) || `field_${order + 1}`,
+            label: field.label,
+            type: field.type,
+            required: field.required,
+            order,
+            config: {
+              helper_text: field.helperText,
+              options: field.options,
+              indicator: field.indicator,
+            },
+          })),
+        }),
+      });
+      setFormMeta((current) => ({
+        ...current,
+        version: `v${version.version}${version.is_published ? "" : " draft"}`,
+      }));
+      setFormNotice(publish ? "Form version published." : "Draft saved.");
+    } catch (caught) {
+      setFormNotice(caught instanceof Error ? caught.message : "Unable to save this form.");
+    } finally {
+      setFormSaving(false);
+    }
+  };
+
   const createRule = () => {
+    if (!projectIndicators.length) return;
     const existingIndicators = new Set(computationRules.map((rule) => rule.indicator));
     const nextIndicator = projectIndicators.find(([name]) => !existingIndicators.has(name))?.[0] ?? projectIndicators[0][0];
     const nextRule: ComputationRule = {
-      id: Math.max(0, ...computationRules.map((rule) => rule.id)) + 1,
+      id: -Date.now(),
       indicator: nextIndicator,
       method: "Sum",
       sourceForm: sourceForms[0],
@@ -269,6 +449,41 @@ export default function ProjectDetailPage() {
     };
     setComputationRules((items) => [...items, nextRule]);
     setSelectedRuleId(nextRule.id);
+  };
+
+  const persistRule = async (rule: ComputationRule) => {
+    const payload = {
+      indicator_id: indicatorIds[rule.indicator],
+      source_form_id: formId,
+      name: `${rule.indicator} computation`,
+      method: rule.method,
+      source_field_key: tokenize(rule.sourceField) || null,
+      numerator_field_key: tokenize(rule.numeratorField) || null,
+      denominator_field_key: tokenize(rule.denominatorField) || null,
+      formula: rule.formula || null,
+      filters: rule.filters === filterOptions[0] ? { submission_status: "accepted" } : {},
+      group_by: rule.groupBy === "None" ? [] : [rule.groupBy],
+    };
+    if (!payload.indicator_id) throw new Error("Select a valid indicator before saving the rule.");
+    const saved = await apiRequest<{ id: number }>(
+      rule.id > 0 ? `/computation-rules/${rule.id}` : `/projects/${projectId}/computation-rules`,
+      { method: rule.id > 0 ? "PATCH" : "POST", body: JSON.stringify(payload) },
+    );
+    const persisted = { ...rule, id: saved.id };
+    setComputationRules((items) => items.map((item) => item.id === rule.id ? persisted : item));
+    setSelectedRuleId(saved.id);
+    return persisted;
+  };
+
+  const testRule = async (rule: ComputationRule) => {
+    const persisted = await persistRule(rule);
+    const preview = await apiRequest<{ preview_value: number; submissions_used: number }>(`/computation-rules/${persisted.id}/preview`, { method: "POST" });
+    setComputationRules((items) => items.map((item) => item.id === persisted.id ? {
+      ...item,
+      previewValue: String(preview.preview_value),
+      submissionsUsed: preview.submissions_used,
+      lastComputed: new Date().toLocaleString(),
+    } : item));
   };
 
   return (
@@ -294,7 +509,7 @@ export default function ProjectDetailPage() {
 
         <StateBand>
           <LoadingState title="Live sync ready" message="This page is prepared for API-backed loading states." />
-          <ErrorState title="Recoverable errors" message="Failed requests will render here with a retry action once backend data is connected." />
+          <ErrorState title={pageError ? "Could not refresh project" : "Recoverable errors"} message={pageError || "Failed requests will render here with a retry action."} />
           <PermissionState message="Restricted actions such as publishing forms and approving submissions can be gated by role." />
         </StateBand>
 
@@ -316,22 +531,28 @@ export default function ProjectDetailPage() {
           })}
         </div>
 
-        {section === "overview" && <OverviewSection />}
-        {section === "outcomes" && <OutcomesSection />}
+        {section === "overview" && <OverviewSection project={project} />}
+        {section === "outcomes" && <OutcomesSection outcomes={projectOutcomes} />}
         {section === "indicators" && (
           <IndicatorsSection
+            indicators={projectIndicators}
             rules={computationRules}
             selectedRule={selectedRule}
             selectedRuleId={selectedRuleId}
             onCreateRule={createRule}
             onRuleSelect={setSelectedRuleId}
+            onSaveRule={(rule) => void persistRule(rule)}
+            onTestRule={(rule) => void testRule(rule)}
             onUpdateRule={updateRule}
           />
         )}
         {section === "forms" && (
           <FormsSection
+            indicators={projectIndicators}
             fields={fields}
             formMeta={formMeta}
+            notice={formNotice}
+            saving={formSaving}
             selectedField={selectedField}
             selectedFieldId={selectedFieldId}
             onAdd={addField}
@@ -343,17 +564,19 @@ export default function ProjectDetailPage() {
               setFields((items) => items.filter((field) => field.id !== id));
               if (selectedFieldId === id) setSelectedFieldId(fields.find((field) => field.id !== id)?.id ?? 0);
             }}
+            onSave={() => void saveForm(false)}
+            onPublish={() => void saveForm(true)}
             onUpdateField={updateField}
           />
         )}
         {section === "submissions" && <SubmissionsSection status={reviewStatus} onStatusChange={setReviewStatus} submissions={filteredSubmissions} />}
-        {section === "reports" && <ReportsSection />}
+        {section === "reports" && <ReportsSection reports={reports} />}
       </div>
     </div>
   );
 }
 
-function OverviewSection() {
+function OverviewSection({ project }: { project: typeof defaultProject }) {
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px] 2xl:grid-cols-[minmax(0,1fr)_380px]">
       <section className="rounded-lg border border-gray-700 bg-gray-800 p-6">
@@ -390,7 +613,7 @@ function OverviewSection() {
   );
 }
 
-function OutcomesSection() {
+function OutcomesSection({ outcomes }: { outcomes: Array<[string, string, number, number]> }) {
   return (
     <SectionCard title="Project outcomes" actionHref={OBJECTIVES} actionLabel="Open outcomes">
       <table className="w-full table-fixed text-sm">
@@ -398,7 +621,7 @@ function OutcomesSection() {
           <tr><th className="w-[42%] p-3">Outcome</th><th className="p-3">Status</th><th className="p-3">Indicators</th><th className="p-3">Progress</th></tr>
         </thead>
         <tbody className="divide-y divide-gray-700">
-          {projectOutcomes.map(([name, status, count, progress]) => (
+          {outcomes.map(([name, status, count, progress]) => (
             <tr key={name} className="text-gray-300"><td className="p-3 font-semibold text-white">{name}</td><td className="p-3">{status}</td><td className="p-3">{count}</td><td className="p-3">{progress}%</td></tr>
           ))}
         </tbody>
@@ -408,24 +631,30 @@ function OutcomesSection() {
 }
 
 function IndicatorsSection({
+  indicators,
   rules,
   selectedRule,
   selectedRuleId,
   onCreateRule,
   onRuleSelect,
+  onSaveRule,
+  onTestRule,
   onUpdateRule,
 }: {
+  indicators: Array<[string, string, string, string]>;
   rules: ComputationRule[];
   selectedRule?: ComputationRule;
   selectedRuleId: number;
   onCreateRule: () => void;
   onRuleSelect: (id: number) => void;
+  onSaveRule: (rule: ComputationRule) => void;
+  onTestRule: (rule: ComputationRule) => void;
   onUpdateRule: (id: number, patch: Partial<ComputationRule>) => void;
 }) {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-4">
-        <Metric label="Indicators" value={projectIndicators.length} icon={<BarChart3 />} />
+        <Metric label="Indicators" value={indicators.length} icon={<BarChart3 />} />
         <Metric label="Rules" value={rules.length} icon={<Calculator />} />
         <Metric label="Mapped" value={rules.filter((rule) => rule.sourceField).length} icon={<LinkIcon />} />
         <Metric label="Last run" value="Today" icon={<PlayCircle />} />
@@ -443,7 +672,7 @@ function IndicatorsSection({
             </button>
           </div>
           <div className="mt-4 space-y-3">
-            {projectIndicators.map(([name, current, target, status]) => {
+            {indicators.map(([name, current, target, status]) => {
               const rule = rules.find((item) => item.indicator === name);
               const active = rule?.id === selectedRuleId;
               return (
@@ -476,7 +705,13 @@ function IndicatorsSection({
         </section>
 
         {selectedRule ? (
-          <ComputationBuilder rule={selectedRule} onUpdate={(patch) => onUpdateRule(selectedRule.id, patch)} />
+          <ComputationBuilder
+            indicators={indicators}
+            rule={selectedRule}
+            onSave={() => onSaveRule(selectedRule)}
+            onTest={() => onTestRule(selectedRule)}
+            onUpdate={(patch) => onUpdateRule(selectedRule.id, patch)}
+          />
         ) : (
           <EmptyState title="No computation rule selected" message="Create or select a rule to define how an indicator should be calculated from submitted form data." actionLabel="Create rule" onAction={onCreateRule} />
         )}
@@ -485,7 +720,19 @@ function IndicatorsSection({
   );
 }
 
-function ComputationBuilder({ rule, onUpdate }: { rule: ComputationRule; onUpdate: (patch: Partial<ComputationRule>) => void }) {
+function ComputationBuilder({
+  indicators,
+  rule,
+  onSave,
+  onTest,
+  onUpdate,
+}: {
+  indicators: Array<[string, string, string, string]>;
+  rule: ComputationRule;
+  onSave: () => void;
+  onTest: () => void;
+  onUpdate: (patch: Partial<ComputationRule>) => void;
+}) {
   const formulaSummary = buildFormulaSummary(rule);
   const usesFormula = rule.method === "Custom formula";
   const usesRatio = rule.method === "Ratio" || rule.method === "Percentage";
@@ -502,10 +749,16 @@ function ComputationBuilder({ rule, onUpdate }: { rule: ComputationRule; onUpdat
               </div>
               <p className="mt-1 text-sm text-gray-400">Define how approved submissions become the indicator value.</p>
             </div>
-            <button className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">
-              <PlayCircle className="h-4 w-4" />
-              Test rule
-            </button>
+            <div className="flex gap-2">
+              <button onClick={onSave} className="inline-flex items-center gap-2 rounded-lg border border-gray-600 px-3 py-2 text-sm font-semibold text-gray-200 transition hover:bg-gray-700">
+                <Save className="h-4 w-4" />
+                Save rule
+              </button>
+              <button onClick={onTest} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">
+                <PlayCircle className="h-4 w-4" />
+                Test rule
+              </button>
+            </div>
           </div>
         </div>
 
@@ -514,7 +767,7 @@ function ComputationBuilder({ rule, onUpdate }: { rule: ComputationRule; onUpdat
             <label className="block lg:col-span-2">
               <span className="mb-2 block text-sm font-semibold text-gray-300">Indicator</span>
               <select value={rule.indicator} onChange={(event) => onUpdate({ indicator: event.target.value })} className="input-dark h-11">
-                {projectIndicators.map(([name]) => <option key={name}>{name}</option>)}
+                {indicators.map(([name]) => <option key={name}>{name}</option>)}
               </select>
             </label>
             <label className="block">
@@ -682,8 +935,11 @@ function tokenize(value: string) {
 }
 
 function FormsSection({
+  indicators,
   fields,
   formMeta,
+  notice,
+  saving,
   selectedField,
   selectedFieldId,
   onAdd,
@@ -692,10 +948,15 @@ function FormsSection({
   onMetaChange,
   onMove,
   onRemove,
+  onSave,
+  onPublish,
   onUpdateField,
 }: {
+  indicators: Array<[string, string, string, string]>;
   fields: FormField[];
   formMeta: { title: string; version: string; instructions: string };
+  notice: string;
+  saving: boolean;
   selectedField?: FormField;
   selectedFieldId: number;
   onAdd: (type: FieldType) => void;
@@ -704,6 +965,8 @@ function FormsSection({
   onMetaChange: (meta: { title: string; version: string; instructions: string }) => void;
   onMove: (id: number, direction: -1 | 1) => void;
   onRemove: (id: number) => void;
+  onSave: () => void;
+  onPublish: () => void;
   onUpdateField: (id: number, patch: Partial<FormField>) => void;
 }) {
   return (
@@ -721,9 +984,9 @@ function FormsSection({
             <History className="h-5 w-5 text-blue-300" />
             <h2 className="text-lg font-semibold">Form versions</h2>
           </div>
-          <button className="inline-flex items-center gap-2 rounded-lg border border-gray-600 px-3 py-2 text-sm font-semibold text-gray-200 transition hover:bg-gray-700">
+          <button onClick={onPublish} disabled={saving} className="inline-flex items-center gap-2 rounded-lg border border-gray-600 px-3 py-2 text-sm font-semibold text-gray-200 transition hover:bg-gray-700 disabled:opacity-50">
             <UploadCloud className="h-4 w-4" />
-            Publish draft
+            {saving ? "Saving..." : "Publish draft"}
           </button>
         </div>
         <div className="mt-4 grid gap-3 md:grid-cols-3">
@@ -780,12 +1043,13 @@ function FormsSection({
                   <Eye className="h-4 w-4" />
                   Preview
                 </button>
-                <button className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">
-                  <UploadCloud className="h-4 w-4" />
-                  Publish
+                <button onClick={onSave} disabled={saving} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50">
+                  <Save className="h-4 w-4" />
+                  {saving ? "Saving..." : "Save draft"}
                 </button>
               </div>
             </div>
+            {notice && <p className="mt-3 text-sm text-blue-200">{notice}</p>}
             <div className="mt-5 grid gap-4 md:grid-cols-[1fr_160px]">
               <label className="block">
                 <span className="mb-2 block text-sm font-semibold text-gray-300">Form title</span>
@@ -847,7 +1111,7 @@ function FormsSection({
         </section>
 
         <div className="space-y-6">
-          <FieldSettings field={selectedField} onUpdate={(patch) => selectedField && onUpdateField(selectedField.id, patch)} />
+          <FieldSettings indicators={indicators} field={selectedField} onUpdate={(patch) => selectedField && onUpdateField(selectedField.id, patch)} />
           <TabletPreview fields={fields} formMeta={formMeta} />
         </div>
       </div>
@@ -855,7 +1119,7 @@ function FormsSection({
   );
 }
 
-function FieldSettings({ field, onUpdate }: { field?: FormField; onUpdate: (patch: Partial<FormField>) => void }) {
+function FieldSettings({ indicators, field, onUpdate }: { indicators: Array<[string, string, string, string]>; field?: FormField; onUpdate: (patch: Partial<FormField>) => void }) {
   if (!field) {
     return (
       <section className="rounded-lg border border-gray-700 bg-gray-800 p-5">
@@ -886,7 +1150,7 @@ function FieldSettings({ field, onUpdate }: { field?: FormField; onUpdate: (patc
           <span className="mb-2 block text-sm font-semibold text-gray-300">Indicator mapping</span>
           <select value={field.indicator} onChange={(event) => onUpdate({ indicator: event.target.value })} className="input-dark h-11">
             <option value="">No indicator mapping</option>
-            {projectIndicators.map(([name]) => <option key={name} value={name}>{name}</option>)}
+            {indicators.map(([name]) => <option key={name} value={name}>{name}</option>)}
           </select>
         </label>
         <label className="block">
@@ -1066,7 +1330,7 @@ function SubmissionsSection({ status, onStatusChange, submissions }: { status: S
   );
 }
 
-function ReportsSection() {
+function ReportsSection({ reports }: { reports: Array<[string, string, string]> }) {
   return (
     <SectionCard title="Project reports" actionHref={REPORTS} actionLabel="Reporting center">
       <div className="grid gap-4 md:grid-cols-3">
@@ -1124,6 +1388,21 @@ function Metric({ label, value, icon }: { label: string; value: string | number;
 function getSection(pathname: string): Section {
   const last = pathname.split("/").filter(Boolean).at(-1);
   return last && ["outcomes", "indicators", "forms", "submissions", "reports"].includes(last) ? (last as Section) : "overview";
+}
+
+function metricProgress(baseline: number, target: number, actual: number) {
+  const range = Number(target) - Number(baseline);
+  if (range === 0) return Number(actual) >= Number(target) ? 100 : 0;
+  return Math.max(0, Math.min(100, ((Number(actual) - Number(baseline)) / range) * 100));
+}
+
+function titleCase(value: string) {
+  return value.replaceAll("_", " ").replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function fieldLabel(key: string | null) {
+  if (!key) return "";
+  return sourceFields.find((field) => tokenize(field) === key) ?? titleCase(key);
 }
 
 function formatCurrency(value: number) {

@@ -14,13 +14,15 @@ import {
   X,
 } from "lucide-react";
 import type React from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ActionMenu } from "@/components/core/action-menu";
+import { apiRequest } from "@/lib/api/client";
 
 type IndicatorStatus = "On Track" | "At Risk" | "Off Track" | "Achieved";
 
 type Indicator = {
   id: number;
+  outcomeId: number;
   name: string;
   description: string;
   baseline: number;
@@ -36,66 +38,8 @@ type Indicator = {
 
 type IndicatorForm = Omit<Indicator, "id" | "updatedAt" | "status">;
 
-const initialIndicators: Indicator[] = [
-  {
-    id: 1,
-    name: "Share of manufacturing value-added in GDP",
-    description: "Percentage of GDP contributed by manufacturing activities.",
-    baseline: 3.2,
-    target: 4.5,
-    current: 4.1,
-    unit: "%",
-    owner: "Policy and Planning",
-    department: "Economic Transformation",
-    outcome: "An industrialised and diversified economy",
-    updatedAt: "2026-03-10",
-    status: "On Track",
-  },
-  {
-    id: 2,
-    name: "Growth rate in export share of manufactures and services",
-    description: "Increase in export share of priority manufactured goods and service categories.",
-    baseline: 65,
-    target: 95,
-    current: 88,
-    unit: "%",
-    owner: "Research",
-    department: "Trade Analysis",
-    outcome: "Competitive private sector",
-    updatedAt: "2026-03-12",
-    status: "On Track",
-  },
-  {
-    id: 3,
-    name: "Youth employment rate",
-    description: "Percentage of youth aged 15-24 who are employed in formal or supported work.",
-    baseline: 40,
-    target: 50,
-    current: 45,
-    unit: "%",
-    owner: "Labour Statistics",
-    department: "Inclusive Growth",
-    outcome: "Enhanced citizenry participation in the economy",
-    updatedAt: "2026-02-28",
-    status: "At Risk",
-  },
-  {
-    id: 4,
-    name: "Non-extractive export earnings",
-    description: "Value of non-extractive export earnings compared against the programme target.",
-    baseline: 12.5,
-    target: 18,
-    current: 11.8,
-    unit: "USD m",
-    owner: "Finance",
-    department: "Trade Analysis",
-    outcome: "Competitive private sector",
-    updatedAt: "2026-01-20",
-    status: "Off Track",
-  },
-];
-
 const emptyForm: IndicatorForm = {
+  outcomeId: 0,
   name: "",
   description: "",
   baseline: 0,
@@ -110,7 +54,10 @@ const emptyForm: IndicatorForm = {
 const statuses: Array<IndicatorStatus | "All"> = ["All", "On Track", "At Risk", "Off Track", "Achieved"];
 
 export default function IndicatorsPage() {
-  const [indicators, setIndicators] = useState<Indicator[]>(initialIndicators);
+  const [indicators, setIndicators] = useState<Indicator[]>([]);
+  const [outcomes, setOutcomes] = useState<Array<{ id: number; name: string; project_id: number }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<IndicatorStatus | "All">("All");
   const [departmentFilter, setDepartmentFilter] = useState("All");
@@ -118,6 +65,53 @@ export default function IndicatorsPage() {
   const [editingIndicator, setEditingIndicator] = useState<Indicator | null>(null);
   const [selectedIndicator, setSelectedIndicator] = useState<Indicator | null>(null);
   const [form, setForm] = useState<IndicatorForm>(emptyForm);
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      apiRequest<Array<{
+        id: number;
+        outcome_id: number;
+        name: string;
+        description: string | null;
+        baseline: number;
+        target: number;
+        actual: number;
+        unit: string | null;
+        updated_at: string;
+      }>>("/indicators"),
+      apiRequest<Array<{ id: number; name: string; project_id: number }>>("/outcomes"),
+      apiRequest<Array<{ id: number; name: string }>>("/projects"),
+    ])
+      .then(([rows, outcomeRows, projects]) => {
+        if (!active) return;
+        setOutcomes(outcomeRows);
+        const outcomeMap = new Map(outcomeRows.map((outcome) => [outcome.id, outcome]));
+        const projectMap = new Map(projects.map((project) => [project.id, project.name]));
+        setIndicators(rows.map((row) => {
+          const linkedOutcome = outcomeMap.get(row.outcome_id);
+          const progress = calculateProgress(Number(row.baseline), Number(row.target), Number(row.actual));
+          return {
+            id: row.id,
+            outcomeId: row.outcome_id,
+            name: row.name,
+            description: row.description ?? "",
+            baseline: Number(row.baseline),
+            target: Number(row.target),
+            current: Number(row.actual),
+            unit: row.unit ?? "",
+            owner: "Monitoring and Evaluation",
+            department: linkedOutcome ? projectMap.get(linkedOutcome.project_id) ?? "Unassigned project" : "Unassigned project",
+            outcome: linkedOutcome?.name ?? "Unassigned outcome",
+            updatedAt: row.updated_at,
+            status: statusFromProgress(progress),
+          };
+        }));
+      })
+      .catch((caught) => active && setError(caught instanceof Error ? caught.message : "Could not load indicators."))
+      .finally(() => active && setLoading(false));
+    return () => { active = false; };
+  }, []);
 
   const departments = useMemo(() => Array.from(new Set(indicators.map((indicator) => indicator.department))), [indicators]);
 
@@ -148,7 +142,7 @@ export default function IndicatorsPage() {
 
   const openCreate = () => {
     setEditingIndicator(null);
-    setForm(emptyForm);
+    setForm({ ...emptyForm, outcomeId: outcomes[0]?.id ?? 0, outcome: outcomes[0]?.name ?? "" });
     setModalOpen(true);
   };
 
@@ -156,6 +150,7 @@ export default function IndicatorsPage() {
     setEditingIndicator(indicator);
     setForm({
       name: indicator.name,
+      outcomeId: indicator.outcomeId,
       description: indicator.description,
       baseline: indicator.baseline,
       target: indicator.target,
@@ -168,24 +163,46 @@ export default function IndicatorsPage() {
     setModalOpen(true);
   };
 
-  const saveIndicator = () => {
-    if (!form.name.trim() || !form.description.trim() || !form.outcome.trim()) return;
+  const saveIndicator = async () => {
+    if (!form.name.trim() || !form.description.trim() || !form.outcomeId) return;
 
     const status = statusFromProgress(calculateProgress(form.baseline, form.target, form.current));
     if (editingIndicator) {
+      await apiRequest(`/indicators/${editingIndicator.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          name: form.name,
+          description: form.description,
+          baseline: form.baseline,
+          target: form.target,
+          actual: form.current,
+          unit: form.unit,
+        }),
+      });
       setIndicators((items) =>
         items.map((item) =>
           item.id === editingIndicator.id ? { ...item, ...form, status, updatedAt: new Date().toISOString().slice(0, 10) } : item
         )
       );
     } else {
-      const nextId = Math.max(0, ...indicators.map((indicator) => indicator.id)) + 1;
-      setIndicators((items) => [...items, { id: nextId, ...form, status, updatedAt: new Date().toISOString().slice(0, 10) }]);
+      const created = await apiRequest<{ id: number; updated_at?: string }>("/indicators", {
+        method: "POST",
+        body: JSON.stringify({
+          outcome_id: form.outcomeId,
+          name: form.name,
+          description: form.description,
+          baseline: form.baseline,
+          target: form.target,
+          unit: form.unit,
+        }),
+      });
+      setIndicators((items) => [...items, { id: created.id, ...form, status, updatedAt: created.updated_at ?? new Date().toISOString() }]);
     }
     setModalOpen(false);
   };
 
-  const deleteIndicator = (id: number) => {
+  const deleteIndicator = async (id: number) => {
+    await apiRequest(`/indicators/${id}`, { method: "DELETE" });
     setIndicators((items) => items.filter((item) => item.id !== id));
   };
 
@@ -233,6 +250,8 @@ export default function IndicatorsPage() {
           </div>
 
           <div className="p-3">
+            {loading && <div className="p-8 text-center text-sm text-gray-400">Loading indicators...</div>}
+            {error && <div className="m-3 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">{error}</div>}
             <table className="w-full table-fixed">
               <thead className="text-left text-xs uppercase tracking-wide text-gray-500">
                 <tr>
@@ -291,7 +310,7 @@ export default function IndicatorsPage() {
                           items={[
                             { label: "View details", icon: <Eye />, onClick: () => setSelectedIndicator(indicator) },
                             { label: "Edit indicator", icon: <Edit3 />, onClick: () => openEdit(indicator) },
-                            { label: "Delete indicator", icon: <Trash2 />, tone: "danger", onClick: () => deleteIndicator(indicator.id) },
+                            { label: "Delete indicator", icon: <Trash2 />, tone: "danger", onClick: () => void deleteIndicator(indicator.id) },
                           ]}
                         />
                       </td>
@@ -330,7 +349,18 @@ export default function IndicatorsPage() {
                 <textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} className="input-dark min-h-24 resize-none" placeholder="Describe what this indicator measures." />
               </Field>
               <Field label="Related outcome" className="sm:col-span-2">
-                <input value={form.outcome} onChange={(event) => setForm({ ...form, outcome: event.target.value })} className="input-dark h-11" placeholder="Enhanced citizenry participation in the economy" />
+                <select
+                  value={form.outcomeId}
+                  onChange={(event) => {
+                    const outcomeId = Number(event.target.value);
+                    setForm({ ...form, outcomeId, outcome: outcomes.find((outcome) => outcome.id === outcomeId)?.name ?? "" });
+                  }}
+                  className="input-dark h-11"
+                  disabled={Boolean(editingIndicator)}
+                >
+                  <option value={0}>Select outcome</option>
+                  {outcomes.map((outcome) => <option key={outcome.id} value={outcome.id}>{outcome.name}</option>)}
+                </select>
               </Field>
               <Field label="Baseline">
                 <input type="number" step="0.01" value={form.baseline} onChange={(event) => setForm({ ...form, baseline: Number(event.target.value) || 0 })} className="input-dark h-11" />
@@ -353,7 +383,7 @@ export default function IndicatorsPage() {
             </div>
             <div className="flex justify-end gap-3 border-t border-slate-700 bg-slate-950/45 px-6 py-5">
               <button onClick={() => setModalOpen(false)} className="rounded-xl border border-slate-600 px-5 py-2.5 text-sm font-semibold text-slate-200 transition hover:bg-slate-800">Cancel</button>
-              <button onClick={saveIndicator} className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500">{editingIndicator ? "Save Changes" : "Create Indicator"}</button>
+              <button onClick={() => void saveIndicator()} className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500">{editingIndicator ? "Save Changes" : "Create Indicator"}</button>
             </div>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogBackdrop,
@@ -45,6 +45,7 @@ import {
   SYSTEM,
 } from "@/constants/page-path";
 import classNames from "@/utils/classnames";
+import { apiRequest, getStoredToken, logoutApiSession } from "@/lib/api/client";
 
 const navigation = [
   { name: "Dashboard", href: DASHBOARD, icon: MdOutlineDashboard },
@@ -77,15 +78,21 @@ const socials = [
   { id: 4, icon: AiOutlineYoutube, href: "#" },
   { id: 5, icon: CiLinkedin, href: "#" },
 ];
-const userNavigation = [
-  { name: "Your profile", href: "#" },
-  { name: "Sign out", href: "#" },
-];
+type SessionMe = {
+  user: {
+    name: string;
+    email: string;
+    role: string;
+  };
+  company: { name?: string } | null;
+  is_superuser: boolean;
+};
 
 export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [session, setSession] = useState<SessionMe | null>(null);
 
   const currentPath = useLocation().current.pathname;
   const isActive = (href: string) =>
@@ -110,6 +117,29 @@ export default function AppLayout() {
     { title: "Report export complete", body: "Quarterly WASH report is ready for download.", tone: "success" },
     { title: "Payment captured", body: "Growth plan invoice INV-2026-005 was paid.", tone: "info" },
   ];
+
+  useEffect(() => {
+    let active = true;
+    if (!getStoredToken()) {
+      window.location.assign("/");
+      return;
+    }
+    apiRequest<SessionMe>("/me")
+      .then((data) => {
+        if (active) setSession(data);
+      })
+      .catch(() => {
+        if (active) void logoutApiSession().then(() => window.location.assign("/"));
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const signOut = async () => {
+    await logoutApiSession();
+    window.location.assign("/");
+  };
 
   return (
     <>
@@ -181,7 +211,7 @@ export default function AppLayout() {
                             </Link>
                           </li>
                         ))}
-                        {systemNavigation.map((item, index) => (
+                        {session?.is_superuser && systemNavigation.map((item, index) => (
                           <li key={`system-${index}`}>
                             <Link
                               to={item.href}
@@ -295,10 +325,12 @@ export default function AppLayout() {
                         </Link>
                       </li>
                     ))}
-                    <li className="pt-4">
-                      <div className="px-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Super User</div>
-                    </li>
-                    {systemNavigation.map((item, index) => (
+                    {session?.is_superuser && (
+                      <li className="pt-4">
+                        <div className="px-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Super User</div>
+                      </li>
+                    )}
+                    {session?.is_superuser && systemNavigation.map((item, index) => (
                       <li key={`system-${index}`}>
                         <Link
                           to={item.href}
@@ -415,9 +447,9 @@ export default function AppLayout() {
                         aria-hidden="true"
                         className="ml-4 text-sm leading-none text-left font-semibold text-gray-200"
                       >
-                        Mr. Otoo <br />{" "}
+                        {session?.user.name ?? "Loading..."} <br />{" "}
                         <span className="font-normal text-xs text-gray-200">
-                          Admin
+                          {formatRole(session?.user.role)}
                         </span>
                       </span>
                       <ChevronDownIcon
@@ -430,16 +462,16 @@ export default function AppLayout() {
                     transition
                     className="absolute right-0 z-10 mt-2.5 w-32 origin-top-right rounded-md bg-gray-800 py-2 shadow-lg ring-1 ring-gray-900/5 transition focus:outline-none data-[closed]:scale-95 data-[closed]:transform data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75 data-[enter]:ease-out data-[leave]:ease-in"
                   >
-                    {userNavigation.map((item) => (
-                      <MenuItem key={item.name}>
-                        <Link
-                          to={item.href}
-                          className="block px-3 py-1 text-sm/6 text-gray-200 data-[focus]:bg-gray-600 data-[focus]:outline-none"
-                        >
-                          {item.name}
-                        </Link>
-                      </MenuItem>
-                    ))}
+                    <MenuItem>
+                      <Link to={SETTINGS} className="block px-3 py-1 text-sm/6 text-gray-200 data-[focus]:bg-gray-600 data-[focus]:outline-none">
+                        Your profile
+                      </Link>
+                    </MenuItem>
+                    <MenuItem>
+                      <button onClick={() => void signOut()} className="block w-full px-3 py-1 text-left text-sm/6 text-gray-200 data-[focus]:bg-gray-600 data-[focus]:outline-none">
+                        Sign out
+                      </button>
+                    </MenuItem>
                   </MenuItems>
                 </Menu>
               </div>
@@ -551,4 +583,9 @@ export default function AppLayout() {
       )}
     </>
   );
+}
+
+function formatRole(role?: string) {
+  if (!role) return "Account";
+  return role.split("_").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
 }

@@ -20,7 +20,7 @@ import {
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 
-import { apiRequest, getDemoToken } from "@/lib/api/client";
+import { API_BASE_URL, apiRequest, getStoredToken } from "@/lib/api/client";
 
 type IndicatorStatus = "On Track" | "At Risk" | "Off Track" | "Achieved";
 type ReportTemplate = "Executive Summary" | "Indicator Performance" | "Field Collection" | "Donor Brief";
@@ -41,7 +41,7 @@ type IndicatorData = {
   history: number[];
 };
 
-const indicators: IndicatorData[] = [
+const fallbackIndicators: IndicatorData[] = [
   {
     id: 1,
     name: "Manufacturing value-added share of GDP",
@@ -114,6 +114,7 @@ type SavedReport = {
 };
 
 export default function ReportsPage() {
+  const [indicators, setIndicators] = useState<IndicatorData[]>([]);
   const [template, setTemplate] = useState<ReportTemplate>("Executive Summary");
   const [status, setStatus] = useState<IndicatorStatus | "All">("All");
   const [department, setDepartment] = useState("All");
@@ -127,11 +128,41 @@ export default function ReportsPage() {
     async function loadReports() {
       setError("");
       try {
-        const token = await getDemoToken();
-        const response = await apiRequest<{ items: ApiReport[] }>("/reports", { token });
-        if (active) setSavedReports(response.items.map(mapReport));
+        const [response, indicatorRows, outcomeRows] = await Promise.all([
+          apiRequest<{ items: ApiReport[] }>("/reports"),
+          apiRequest<Array<{ id: number; outcome_id: number; name: string; baseline: number; target: number; actual: number; unit: string | null }>>("/indicators"),
+          apiRequest<Array<{ id: number; name: string }>>("/outcomes"),
+        ]);
+        if (active) {
+          const outcomeMap = new Map(outcomeRows.map((outcome) => [outcome.id, outcome.name]));
+          setSavedReports(response.items.map(mapReport));
+          setIndicators(indicatorRows.map((item) => {
+            const baseline = Number(item.baseline);
+            const target = Number(item.target);
+            const actual = Number(item.actual);
+            const performance = target === baseline ? (actual >= target ? 100 : 0) : ((actual - baseline) / (target - baseline)) * 100;
+            return {
+              id: item.id,
+              name: item.name,
+              baseline,
+              target,
+              actual,
+              unit: item.unit ?? "",
+              status: indicatorStatus(performance),
+              objective: outcomeMap.get(item.outcome_id) ?? "Unassigned outcome",
+              assignee: "Monitoring and Evaluation",
+              category: outcomeMap.get(item.outcome_id) ?? "Portfolio",
+              quality: 100,
+              submissions: 0,
+              history: [baseline, actual],
+            };
+          }));
+        }
       } catch (err) {
-        if (active) setError(err instanceof Error ? err.message : "Unable to load reports.");
+        if (active) {
+          setError(err instanceof Error ? err.message : "Unable to load reports.");
+          setIndicators(fallbackIndicators);
+        }
       }
     }
     void loadReports();
@@ -146,7 +177,7 @@ export default function ReportsPage() {
       const matchesDepartment = department === "All" || indicator.category === department;
       return matchesStatus && matchesDepartment;
     });
-  }, [status, department]);
+  }, [status, department, indicators]);
 
   const stats = useMemo(() => {
     const total = filtered.length || 1;
@@ -168,10 +199,8 @@ export default function ReportsPage() {
     setGenerated(false);
     setError("");
     try {
-      const token = await getDemoToken();
       const response = await apiRequest<{ report: ApiReport }>("/reports", {
         method: "POST",
-        token,
         body: JSON.stringify({
           title: `${template} - ${new Date().toLocaleDateString()}`,
           template,
@@ -183,7 +212,7 @@ export default function ReportsPage() {
           },
         }),
       });
-      await apiRequest(`/reports/${response.report.id}/export`, { method: "POST", token });
+      await apiRequest(`/reports/${response.report.id}/export`, { method: "POST" });
       setSavedReports((items) => [mapReport({ ...response.report, status: "Ready", download_url: `/api/v1/reports/${response.report.id}/download` }), ...items]);
       setGenerated(true);
     } catch (err) {
@@ -216,16 +245,16 @@ export default function ReportsPage() {
     if (!report.download_url) return;
     setError("");
     try {
-      const token = await getDemoToken();
-      const response = await fetch(`http://127.0.0.1:8000${report.download_url}`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const apiOrigin = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
+      const response = await fetch(`${apiOrigin}${report.download_url}`, {
+        headers: { Authorization: `Bearer ${getStoredToken() ?? ""}` },
       });
       if (!response.ok) throw new Error("Unable to download report.");
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `pkay-mne-report-${report.id}.txt`;
+      link.download = `pkay-mne-report-${report.id}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -432,6 +461,13 @@ function mapReport(report: ApiReport): SavedReport {
     status: report.status,
     download_url: report.download_url,
   };
+}
+
+function indicatorStatus(performance: number): IndicatorStatus {
+  if (performance >= 100) return "Achieved";
+  if (performance >= 75) return "On Track";
+  if (performance >= 50) return "At Risk";
+  return "Off Track";
 }
 
 function MetricCard({ title, value, icon, tone }: { title: string; value: string | number; icon: React.ReactNode; tone: "blue" | "green" | "amber" | "purple" }) {

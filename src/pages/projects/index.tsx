@@ -15,7 +15,7 @@ import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-location";
 import { ActionMenu } from "@/components/core/action-menu";
-import { apiRequest, getDemoToken } from "@/lib/api/client";
+import { apiRequest } from "@/lib/api/client";
 import { projectStatusFromApi, projectStatusToApi } from "@/lib/api/mappers";
 
 type ProjectStatus = "Active" | "Planning" | "Paused" | "Completed";
@@ -30,39 +30,6 @@ type Project = {
   budget: number | "";
 };
 
-const initialProjects: Project[] = [
-  {
-    id: 1,
-    name: "Industrial Transformation Programme",
-    owner: "Monitoring and Evaluation",
-    status: "Active",
-    outcomes: 4,
-    indicators: 18,
-    due: "2026-12-31",
-    budget: 1250000,
-  },
-  {
-    id: 2,
-    name: "Youth Employment Acceleration",
-    owner: "Policy and Planning",
-    status: "Planning",
-    outcomes: 3,
-    indicators: 12,
-    due: "2026-09-30",
-    budget: 640000,
-  },
-  {
-    id: 3,
-    name: "District Service Delivery Review",
-    owner: "Research",
-    status: "Active",
-    outcomes: 5,
-    indicators: 24,
-    due: "2026-06-15",
-    budget: 890000,
-  },
-];
-
 const emptyForm: Omit<Project, "id"> = {
   name: "",
   owner: "",
@@ -76,7 +43,7 @@ const emptyForm: Omit<Project, "id"> = {
 const statuses: Array<ProjectStatus | "All"> = ["All", "Active", "Planning", "Paused", "Completed"];
 
 export default function ProjectsPage() {
-  const [projects, setProjects] = useState<Project[]>(initialProjects);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -111,7 +78,6 @@ export default function ProjectsPage() {
       try {
         setLoading(true);
         setError(null);
-        const token = await getDemoToken("admin");
         const rows = await apiRequest<Array<{
           id: number;
           name: string;
@@ -119,12 +85,12 @@ export default function ProjectsPage() {
           department_id: number | null;
           end_date: string | null;
           budget: number | string | null;
-        }>>("/projects", { token });
+        }>>("/projects");
         const mapped = await Promise.all(
           rows.map(async (project) => {
             const [outcomes, indicators] = await Promise.all([
-              apiRequest<unknown[]>(`/projects/${project.id}/outcomes`, { token }),
-              apiRequest<unknown[]>(`/projects/${project.id}/indicators`, { token }),
+              apiRequest<unknown[]>(`/projects/${project.id}/outcomes`),
+              apiRequest<unknown[]>(`/projects/${project.id}/indicators`),
             ]);
             return {
               id: project.id,
@@ -173,18 +139,15 @@ export default function ProjectsPage() {
 
   const saveProject = async () => {
     if (!form.name.trim() || !form.owner.trim()) return;
-    const token = await getDemoToken("admin");
     if (editingProject) {
       await apiRequest(`/projects/${editingProject.id}`, {
         method: "PATCH",
-        token,
         body: JSON.stringify({ name: form.name, status: projectStatusToApi(form.status), end_date: form.due || null, budget: form.budget || null }),
       });
       setProjects((items) => items.map((item) => (item.id === editingProject.id ? { ...item, ...form } : item)));
     } else {
       const created = await apiRequest<{ id: number }>("/projects", {
         method: "POST",
-        token,
         body: JSON.stringify({ name: form.name, status: projectStatusToApi(form.status), end_date: form.due || null, budget: form.budget || null }),
       });
       setProjects((items) => [...items, { id: created.id, ...form, outcomes: 0, indicators: 0 }]);
@@ -193,8 +156,7 @@ export default function ProjectsPage() {
   };
 
   const deleteProject = async (id: number) => {
-    const token = await getDemoToken("admin");
-    await apiRequest(`/projects/${id}`, { method: "DELETE", token });
+    await apiRequest(`/projects/${id}`, { method: "DELETE" });
     setProjects((items) => items.filter((item) => item.id !== id));
   };
 

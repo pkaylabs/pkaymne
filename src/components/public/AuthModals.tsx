@@ -461,7 +461,11 @@ function SignupPanel({
     setIsSubmitting(true);
     setMessage("");
     try {
-      const session = await apiRequest<{ access_token: string }>("/auth/signup", {
+      const session = await apiRequest<{
+        access_token: string;
+        refresh_token?: string | null;
+        user?: { role?: string };
+      }>("/auth/signup", {
         method: "POST",
         body: JSON.stringify({
           organization_name: organizationName,
@@ -470,7 +474,7 @@ function SignupPanel({
           password,
         }),
       });
-      storeApiSession(session.access_token);
+      storeApiSession(session);
       await apiRequest("/payments/paystack/initialize", {
         method: "POST",
         token: session.access_token,

@@ -19,11 +19,12 @@ import {
   X,
 } from "lucide-react";
 import type React from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-location";
 import { ActionMenu } from "@/components/core/action-menu";
 import { OPERATIONS } from "@/constants/page-path";
 import logoUrl from "@/assets/images/logo.png";
+import { apiRequest } from "@/lib/api/client";
 
 type Section = "billing" | "notifications" | "audit" | "imports" | "permissions" | "workspace";
 type ImportStatus = "Validated" | "Needs Review" | "Queued" | "Imported";
@@ -46,11 +47,12 @@ const invoices = [
 type Invoice = (typeof invoices)[number];
 
 const notifications = [
-  { id: 1, title: "Quarterly WASH report exported", body: "Executive summary PDF is ready for review.", project: "WASH Baseline 2026", time: "12 min ago", tone: "success" as NotificationTone, unread: true },
-  { id: 2, title: "Submission sync delayed", body: "23 tablet submissions are waiting for connectivity.", project: "Education Access", time: "42 min ago", tone: "warning" as NotificationTone, unread: true },
-  { id: 3, title: "Indicator computation failed", body: "Completion Rate formula references a retired form field.", project: "Industrial Transformation", time: "2 hrs ago", tone: "danger" as NotificationTone, unread: false },
-  { id: 4, title: "User invite accepted", body: "Ama Mensah joined as Project Analyst.", project: "Workspace", time: "Yesterday", tone: "info" as NotificationTone, unread: false },
+  { id: "1", title: "Quarterly WASH report exported", body: "Executive summary PDF is ready for review.", project: "WASH Baseline 2026", time: "12 min ago", tone: "success" as NotificationTone, unread: true },
+  { id: "2", title: "Submission sync delayed", body: "23 tablet submissions are waiting for connectivity.", project: "Education Access", time: "42 min ago", tone: "warning" as NotificationTone, unread: true },
+  { id: "3", title: "Indicator computation failed", body: "Completion Rate formula references a retired form field.", project: "Industrial Transformation", time: "2 hrs ago", tone: "danger" as NotificationTone, unread: false },
+  { id: "4", title: "User invite accepted", body: "Ama Mensah joined as Project Analyst.", project: "Workspace", time: "Yesterday", tone: "info" as NotificationTone, unread: false },
 ];
+type NotificationItem = (typeof notifications)[number];
 
 const auditEvents = [
   { id: "AUD-2409", actor: "Mr. Otoo", action: "Updated indicator formula", target: "Completion Rate", area: "Indicators", time: "May 24, 2026 14:35", risk: "Medium" },
@@ -61,11 +63,12 @@ const auditEvents = [
 ];
 
 const imports = [
-  { id: 1, name: "district_indicators_may.xlsx", type: "Indicators", rows: 124, status: "Validated" as ImportStatus, owner: "Ama Mensah", updated: "15 min ago" },
-  { id: 2, name: "enumerators_batch_04.csv", type: "Users", rows: 47, status: "Imported" as ImportStatus, owner: "Mr. Otoo", updated: "Today" },
-  { id: 3, name: "school_submission_backfill.csv", type: "Submissions", rows: 1820, status: "Needs Review" as ImportStatus, owner: "Data Team", updated: "Yesterday" },
-  { id: 4, name: "outcome_framework.xlsx", type: "Outcomes", rows: 18, status: "Queued" as ImportStatus, owner: "Policy Unit", updated: "Yesterday" },
+  { id: "1", name: "district_indicators_may.xlsx", type: "Indicators", rows: 124, status: "Validated" as ImportStatus, owner: "Ama Mensah", updated: "15 min ago" },
+  { id: "2", name: "enumerators_batch_04.csv", type: "Users", rows: 47, status: "Imported" as ImportStatus, owner: "Mr. Otoo", updated: "Today" },
+  { id: "3", name: "school_submission_backfill.csv", type: "Submissions", rows: 1820, status: "Needs Review" as ImportStatus, owner: "Data Team", updated: "Yesterday" },
+  { id: "4", name: "outcome_framework.xlsx", type: "Outcomes", rows: 18, status: "Queued" as ImportStatus, owner: "Policy Unit", updated: "Yesterday" },
 ];
+type ImportItem = (typeof imports)[number];
 
 const roles = [
   { name: "Agency Admin", users: 4, scope: "Workspace-wide", permissions: ["Manage projects", "Invite users", "Billing self-service", "Publish forms"] },
@@ -93,11 +96,73 @@ export default function OperationsPage() {
   const [query, setQuery] = useState("");
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [liveInvoices, setLiveInvoices] = useState(invoices);
+  const [liveNotifications, setLiveNotifications] = useState(notifications);
+  const [liveAuditEvents, setLiveAuditEvents] = useState(auditEvents);
+  const [liveImports, setLiveImports] = useState(imports);
+  const [summary, setSummary] = useState({ currentPlan: "Growth", unreadAlerts: 0, auditEvents: 0, storageUsed: 0 });
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      apiRequest<{ current_plan: string; unread_alerts: number; audit_events_count: number; storage_used_percent: number }>("/operations/summary"),
+      apiRequest<{ items: Array<{ id: string; date: string; amount: { amount: number; currency: string }; status: string; method: string }> }>("/operations/billing/invoices"),
+      apiRequest<{ items: Array<{ id: string; title: string; body: string; project_name: string | null; tone: NotificationTone; unread: boolean; created_at: string }> }>("/operations/notifications"),
+      apiRequest<{ items: Array<{ id: string; actor: { name: string }; action: string; target: string; area: string; risk: string; created_at: string }> }>("/operations/audit-events"),
+      apiRequest<{ items: Array<{ id: string; name: string; type: string; rows: number; status: string; owner: string; updated: string }> }>("/operations/imports"),
+    ])
+      .then(([summaryRow, invoiceRows, notificationRows, auditRows, importRows]) => {
+        if (!active) return;
+        setSummary({
+          currentPlan: summaryRow.current_plan,
+          unreadAlerts: summaryRow.unread_alerts,
+          auditEvents: summaryRow.audit_events_count,
+          storageUsed: summaryRow.storage_used_percent,
+        });
+        setLiveInvoices(invoiceRows.items.map((item) => ({
+          id: item.id,
+          date: formatTimestamp(item.date),
+          amount: new Intl.NumberFormat("en", { style: "currency", currency: item.amount.currency }).format(item.amount.amount),
+          status: item.status,
+          method: item.method,
+        })));
+        setLiveNotifications(notificationRows.items.map((item) => ({
+          id: item.id,
+          title: item.title,
+          body: item.body,
+          project: item.project_name ?? "Workspace",
+          time: formatTimestamp(item.created_at),
+          tone: item.tone,
+          unread: item.unread,
+        })));
+        setLiveAuditEvents(auditRows.items.map((item) => ({
+          id: item.id,
+          actor: item.actor.name,
+          action: item.action,
+          target: item.target,
+          area: item.area,
+          time: formatTimestamp(item.created_at),
+          risk: item.risk,
+        })));
+        setLiveImports(importRows.items.map((item) => ({
+          id: item.id,
+          name: item.name,
+          type: item.type,
+          rows: item.rows,
+          status: normalizeImportStatus(item.status),
+          owner: item.owner,
+          updated: formatTimestamp(item.updated),
+        })));
+      })
+      .catch((caught) => active && setError(caught instanceof Error ? caught.message : "Unable to load operations data."));
+    return () => { active = false; };
+  }, []);
 
   const filteredAuditEvents = useMemo(() => {
     const needle = query.toLowerCase().trim();
-    return auditEvents.filter((event) => !needle || [event.actor, event.action, event.target, event.area].some((value) => value.toLowerCase().includes(needle)));
-  }, [query]);
+    return liveAuditEvents.filter((event) => !needle || [event.actor, event.action, event.target, event.area].some((value) => value.toLowerCase().includes(needle)));
+  }, [liveAuditEvents, query]);
 
   return (
     <div className="min-h-screen bg-gray-900 p-6 pb-24">
@@ -121,11 +186,12 @@ export default function OperationsPage() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-4">
-          <Metric label="Current plan" value="Growth" icon={<CreditCard />} />
-          <Metric label="Unread alerts" value={notifications.filter((item) => item.unread).length} icon={<Bell />} />
-          <Metric label="Audit events" value="2.4k" icon={<FileClock />} />
-          <Metric label="Storage used" value="68%" icon={<Database />} />
+          <Metric label="Current plan" value={summary.currentPlan} icon={<CreditCard />} />
+          <Metric label="Unread alerts" value={summary.unreadAlerts || liveNotifications.filter((item) => item.unread).length} icon={<Bell />} />
+          <Metric label="Audit events" value={summary.auditEvents} icon={<FileClock />} />
+          <Metric label="Storage used" value={`${summary.storageUsed}%`} icon={<Database />} />
         </div>
+        {error && <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">{error}</div>}
 
         <div className="flex flex-wrap gap-2 rounded-lg border border-gray-700 bg-gray-800 p-2">
           {tabs.map((tab) => {
@@ -139,10 +205,10 @@ export default function OperationsPage() {
           })}
         </div>
 
-        {section === "billing" && <Billing onUpgrade={() => setUpgradeOpen(true)} />}
-        {section === "notifications" && <Notifications />}
+        {section === "billing" && <Billing invoices={liveInvoices} onUpgrade={() => setUpgradeOpen(true)} />}
+        {section === "notifications" && <Notifications notifications={liveNotifications} />}
         {section === "audit" && <AuditLog query={query} setQuery={setQuery} events={filteredAuditEvents} />}
-        {section === "imports" && <ImportExport onImport={() => setImportOpen(true)} />}
+        {section === "imports" && <ImportExport imports={liveImports} onImport={() => setImportOpen(true)} />}
         {section === "permissions" && <Permissions />}
         {section === "workspace" && <WorkspacePreferences />}
       </div>
@@ -153,7 +219,7 @@ export default function OperationsPage() {
   );
 }
 
-function Billing({ onUpgrade }: { onUpgrade: () => void }) {
+function Billing({ invoices, onUpgrade }: { invoices: Invoice[]; onUpgrade: () => void }) {
   const downloadInvoice = (invoice: Invoice) => {
     void downloadInvoicePdf(invoice);
   };
@@ -239,7 +305,7 @@ function Billing({ onUpgrade }: { onUpgrade: () => void }) {
   );
 }
 
-function Notifications() {
+function Notifications({ notifications }: { notifications: NotificationItem[] }) {
   const [channel, setChannel] = useState("All");
   const [selected, setSelected] = useState<(typeof notifications)[number] | null>(null);
   const filtered = notifications.filter((item) => channel === "All" || item.tone === channel.toLowerCase());
@@ -312,7 +378,7 @@ function AuditLog({ query, setQuery, events }: { query: string; setQuery: (value
   );
 }
 
-function ImportExport({ onImport }: { onImport: () => void }) {
+function ImportExport({ imports, onImport }: { imports: ImportItem[]; onImport: () => void }) {
   return (
     <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
       <section className="rounded-lg border border-gray-700 bg-gray-800">
@@ -681,4 +747,19 @@ function ImportBadge({ status }: { status: ImportStatus }) {
 function getSection(pathname: string): Section {
   const last = pathname.split("/").filter(Boolean).at(-1);
   return last && ["billing", "notifications", "audit", "imports", "permissions", "workspace"].includes(last) ? (last as Section) : "billing";
+}
+
+function formatTimestamp(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? value
+    : new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(date);
+}
+
+function normalizeImportStatus(status: string): ImportStatus {
+  const normalized = status.toLowerCase();
+  if (normalized === "success" || normalized === "imported") return "Imported";
+  if (normalized === "warning" || normalized === "needs review") return "Needs Review";
+  if (normalized === "validated") return "Validated";
+  return "Queued";
 }

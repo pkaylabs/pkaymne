@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
-import { apiRequest, getDemoToken } from "@/lib/api/client";
+import { apiRequest } from "@/lib/api/client";
 
 type Settings = {
   institution: {
@@ -111,30 +111,55 @@ export default function SettingsPage() {
   const [departmentForm, setDepartmentForm] = useState({ name: "", description: "" });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     let active = true;
-    async function loadDepartments() {
+    async function loadSettings() {
       try {
-        const token = await getDemoToken();
-        const rows = await apiRequest<Department[]>("/organizations/departments", { token });
-        if (active && rows.length) setDepartments(rows);
-      } catch {
-        // Keep seeded UI departments if the local API is offline.
+        const [rows, organization] = await Promise.all([
+          apiRequest<Department[]>("/organizations/departments"),
+          apiRequest<{ name: string; settings: Partial<Settings> }>("/organizations/me"),
+        ]);
+        if (!active) return;
+        setDepartments(rows);
+        setSettings((current) => ({
+          ...current,
+          ...organization.settings,
+          institution: {
+            ...current.institution,
+            ...(organization.settings.institution ?? {}),
+            name: organization.name,
+          },
+        }));
+      } catch (caught) {
+        if (active) setError(caught instanceof Error ? caught.message : "Unable to load workspace settings.");
       }
     }
-    void loadDepartments();
+    void loadSettings();
     return () => {
       active = false;
     };
   }, []);
 
   const saveSettings = async () => {
-    setSaving(true);
-    await new Promise((resolve) => setTimeout(resolve, 900));
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    try {
+      setSaving(true);
+      setError("");
+      await apiRequest("/organizations/me", {
+        method: "PATCH",
+        body: JSON.stringify({
+          name: settings.institution.name,
+          settings,
+        }),
+      });
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 2500);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to save workspace settings.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const update = <Section extends keyof Settings>(section: Section, patch: Partial<Settings[Section]>) => {
@@ -144,15 +169,14 @@ export default function SettingsPage() {
   const createDepartment = async () => {
     if (!departmentForm.name.trim()) return;
     try {
-      const token = await getDemoToken();
       const created = await apiRequest<Department>("/organizations/departments", {
         method: "POST",
-        token,
         body: JSON.stringify(departmentForm),
       });
       setDepartments((items) => [...items, created]);
-    } catch {
-      setDepartments((items) => [...items, { id: Date.now(), name: departmentForm.name, description: departmentForm.description }]);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to create department.");
+      return;
     }
     setDepartmentForm({ name: "", description: "" });
   };
@@ -187,6 +211,7 @@ export default function SettingsPage() {
             </div>
           </div>
         )}
+        {error && <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">{error}</div>}
 
         <div className="grid gap-4 md:grid-cols-4">
           <Metric label="Plan" value={settings.subscription.plan} icon={<CreditCard />} />
